@@ -1,0 +1,10 @@
+Adafruit-Blinka==9.1.0
+adafruit-circuitpython-ads1x15==3.0.4
+adafruit-circuitpython-as7341==1.2.27
+numpy==2.4.6
+pimoroni-bme280==1.0.0
+py-opc-ng==0.0.5
+pymavlink==2.4.49
+pyusbiss==0.2.2
+PySide6-Essentials==6.11.1
+RPi.GPIO==0.7.1
