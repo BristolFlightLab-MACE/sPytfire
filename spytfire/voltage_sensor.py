@@ -41,7 +41,7 @@ class VoltageSensorWorker(BasePollingWorker):
             # Create the ADC object using the I2C bus
             self.ads = ADS1115(i2c,address = address)
         
-        except (NameError, ValueError, OSError) as e:
+        except (NameError, ValueError, OSError, AttributeError) as e:
             print(f"[{name}] Hardware failure: {e}")
             self.sensor = None
             return
