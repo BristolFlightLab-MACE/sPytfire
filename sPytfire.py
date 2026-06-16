@@ -52,6 +52,12 @@ from spytfire.voltage_sensor import VoltageSensorWorker
 from spytfire.mavlink import MavlinkWorker
 from spytfire.base import SensorWorker, UASWorker
 
+try:
+    import rclpy.node
+    import mace_sensor_interfaces.msg as mace_msgs
+except ImportError:
+    print("Wraning: Error importing ROS modules. ROS transport not available")
+
 from pathlib import Path
 
 # Creates 'data_logs' and any missing parent folders. 
@@ -343,22 +349,19 @@ class RosLogger(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        import rclpy
-        import mace_sensor_interfaces.msg as mace_msgs
-
         # Setup ROS connection
         rclpy.init()
         self.node = rclpy.node.Node("mace_sensors")
 
         # Setup ROS publishers
-        self.AdaFruit_pub = node.create_publisher(mace_msgs.AdaFruit, '/mace_sensors/AdaFruit', 10)
-        self.BME280_pub = node.create_publisher(mace_msgs.BME280, '/mace_sensors/BME280', 10)
-        self.SL510_1729_pub = node.create_publisher(mace_msgs.ApogeeLx, '/mace_sensors/SL510_1729', 10)
-        self.SL610_1463_pub = node.create_publisher(mace_msgs.ApogeeLx, '/mace_sensors/SL610_1463', 10)
-        self.SP510_3985_pub = node.create_publisher(mace_msgs.ApogeeS, '/mace_sensors/SP510_3985', 10)
-        self.SPN1_pub = node.create_publisher(mace_msgs.SPN1, '/mace_sensors/SPN1', 10)
-        self.OPC_N3_pub = node.create_publisher(mace_msgs.OPC, '/mace_sensors/OPC_N3', 10)
-        self.Ex_volt_pub = node.create_publisher(mace_msgs.ExVoltage, '/mace_sensors/Ex_volt', 10)
+        self.AdaFruit_pub = self.node.create_publisher(mace_msgs.AdaFruit, '/mace_sensors/AdaFruit', 10)
+        self.BME280_pub = self.node.create_publisher(mace_msgs.BME280, '/mace_sensors/BME280', 10)
+        self.SL510_1729_pub = self.node.create_publisher(mace_msgs.ApogeeLx, '/mace_sensors/SL510_1729', 10)
+        self.SL610_1463_pub = self.node.create_publisher(mace_msgs.ApogeeLx, '/mace_sensors/SL610_1463', 10)
+        self.SP510_3985_pub = self.node.create_publisher(mace_msgs.ApogeeS, '/mace_sensors/SP510_3985', 10)
+        self.SPN1_pub = self.node.create_publisher(mace_msgs.SPN1, '/mace_sensors/SPN1', 10)
+        self.OPC_N3_pub = self.node.create_publisher(mace_msgs.OPC, '/mace_sensors/OPC_N3', 10)
+        self.Ex_volt_pub = self.node.create_publisher(mace_msgs.ExVoltage, '/mace_sensors/Ex_volt', 10)
 
     @Slot(str)
     def handle_time(self, uas_time):
@@ -546,7 +549,8 @@ if __name__ == "__main__":
     # 2. Setup components
     console_logger = ConsoleLogger()
     file_logger = FileLogger()
-    controller = Controller([console_logger, file_logger], connection_str, on_off_channel)
+    ros_logger = RosLogger()
+    controller = Controller([console_logger, file_logger, ros_logger], connection_str, on_off_channel)
 
     # Hook Ctrl+C
     signal.signal(signal.SIGINT, lambda sig, frame: (exit_timer.stop(), controller.request_exit()))
