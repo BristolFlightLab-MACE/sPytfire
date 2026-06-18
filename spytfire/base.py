@@ -77,6 +77,7 @@ class SensorWorker(BasePollingWorker):
     def __init__(self, name, interval_ms=100):
         # Pass shared variables to BaseWorker
         super().__init__(name, interval_ms)
+        self.initialized = True
 
     def process(self):
         # Your specific sensor logic here

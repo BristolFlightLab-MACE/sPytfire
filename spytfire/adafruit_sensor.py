@@ -57,7 +57,7 @@ class AdafruitSensorWorker(BasePollingWorker):
             
             self.initialized = True
             
-        except (NameError, ValueError, OSError) as e:
+        except (NameError, ValueError, OSError, AttributeError) as e:
             print(f"[{name}] Hardware failure: {e}")
             self.sensor = None
             return
