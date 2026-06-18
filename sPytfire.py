@@ -146,8 +146,8 @@ class FileLogger(QObject):
                     'radiative_flux': {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
                     'excite_v'      : {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
                     'sensor_t'      : {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
-                    'voltage0'      : {'fmt':'.6f', 'header': "Differential Voltage0 (°C)" },
-                    'voltage1'      : {'fmt':'.6f', 'header': "Differential Voltage1 (°C)" }
+                    'voltage0'      : {'fmt':'.6f', 'header': "Differential Voltage0 (V)" },
+                    'voltage1'      : {'fmt':'.6f', 'header': "Differential Voltage1 (V)" }
                     }
                 },
             
