@@ -32,6 +32,7 @@ import time
 # Create new SensorWorker for the alphasense OPC-N3
 # =============================================================================
 class OPCSensorWorker(BasePollingWorker):
+    '''Class to read the alphasense OPC-N3 and emit it to the controller.'''
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=200):

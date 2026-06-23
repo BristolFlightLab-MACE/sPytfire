@@ -67,11 +67,16 @@ class MavlinkWorker(BaseWorker):
         """Filter and emit only the data required. Included placeholders."""
         m_type = msg.get_type()
         
+        # Readout the MAVLINK messagetype and match it to message types of interest
         match m_type:
             #case 'HEARTBEAT':                                    #msg_type   0
             #    pass
             case 'SYSTEM_TIME':                                   #msg_type   2
                 self.uas_time_updated.emit(msg.time_unix_usec)
+            case 'GLOBAL_POSITION_INT':
+                msg.lat
+                msg.lon
+                msg.alt
             case 'RC_CHANNELS':                                   #msg_type  35
                 channel_value = getattr(msg, self.channel_name, 1500)
                 if channel_value == 0:
@@ -81,10 +86,11 @@ class MavlinkWorker(BaseWorker):
                     self.set_recording_state(True, "Payload recording Started")
                                              
                 elif channel_value < 1200 and self.recording:
-                    self.set_recording_state(False, "Payload recording Stopped")
-                                        
+                    self.set_recording_state(False, "Payload recording Stopped")                          
             #case 'TIMESYNC':                                      #msg_type 111
             #    pass
+            case 'HIL_STATE_QUATERNION':                           #msg_type 115
+                msg.true_airspeed
 
     def set_recording_state(self, state, status_text):
             """Helper to deduplicate statustext packet transmissions."""

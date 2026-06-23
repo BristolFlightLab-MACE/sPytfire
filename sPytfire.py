@@ -2,7 +2,7 @@
 """
 Created on Tue Mar 31 11:13:23 2026
 
-Datalogger for the MACE drones, with code built on iFit SO2 emission rate frame
+Datalogger for the MACE drones, with some code built on iFit SO2 emission rate frame *Not yet included
 
 Use the following lines in conda to make sure all modules are installed for iFit and MACE drone
 conda install -c conda-forge numpy scipy tqdm pandas pyyaml pyserial utm pyside6 pyqtgraph seabreeze
@@ -38,10 +38,6 @@ connection_str = "/dev/serial0"
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, QThread, Slot, QTimer, QCoreApplication, Qt
 
-from datetime import datetime, timezone
-
-import sys, signal
-
 # Load custom modules containing the workers for each sensor/connection
 from spytfire.apogee_sensor import ApogeeSensorWorker, calc_longwave
 from spytfire.bme_sensor import BMESensorWorker
@@ -52,7 +48,10 @@ from spytfire.voltage_sensor import VoltageSensorWorker
 from spytfire.mavlink import MavlinkWorker
 from spytfire.base import SensorWorker, UASWorker
 
+# Load other libraries
 from pathlib import Path
+from datetime import datetime, timezone
+import sys, signal
 
 # Creates 'data_logs' and any missing parent folders. 
 # exist_ok=True prevents an error if it already exists.
@@ -68,16 +67,20 @@ Path("data_logs/opc").mkdir(parents=True, exist_ok=True)
 
 # ---------------- Output Handlers ----------------
 class ConsoleLogger(QObject):
-    """Prints emitter data to console."""
+    """Connects to emitters of data from sensors and prints
+    results to console."""
     
     def __init__(self, parent=None):
         super().__init__(parent)
     
+    # Create separate slot to print the time as it arrives from MAVLINK
     @Slot(str)
     def handle_time(self, uas_time):
+
         pass
         #print(f"[Time] {uas_time}")
 
+    # Crate a slot for the arrival of data from the sensors
     @Slot(str, dict)
     def handle_data(self, name, data_dict):
         #pass
@@ -87,13 +90,15 @@ class ConsoleLogger(QObject):
         #    print(f"{key}:{data_dict[key]:.6f}")
 
 class FileLogger(QObject):
+    """Connects to emitters of data from sensors and writes to
+    files in the data_logs folder."""
     def __init__(self, prefix="data_logs/", parent=None):
         super().__init__(parent)
         
         self.thermist_list = ['SL510_1729','SL610_1463']
         self.excitation_voltage = None
         
-        # Create dictionary of properties
+        # Create dictionary of properties for correctly formatting each sensor's data
         self.SENSOR_CONFIG = {
 
             'AdaFruit': {
@@ -176,6 +181,7 @@ class FileLogger(QObject):
                     }
                 },
             
+            # Note currently not in use due to two shortwave sensors connecting to the same ADC
             'SP610_1707': {
                 'file_prefix': f'{prefix}apogeeS/',
                 'output_file': None,
@@ -339,7 +345,7 @@ class FileLogger(QObject):
 # ---------------- Controller ----------------
 
 class Controller(QObject):
-    """Manages emitters and handles Ctrl+C."""
+    """Setup all emitters and handles while launching each sensor."""
 
     def __init__(self, handlers, conn_str, rc_channel):
         super().__init__()
@@ -494,7 +500,7 @@ if __name__ == "__main__":
     exit_timer.timeout.connect(lambda: None)
     exit_timer.start(100)
 
-    # 2. Setup components
+    # Setup logging and controller components
     console_logger = ConsoleLogger()
     file_logger = FileLogger()
     controller = Controller([console_logger, file_logger], connection_str, on_off_channel)

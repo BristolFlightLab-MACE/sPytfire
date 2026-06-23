@@ -25,6 +25,7 @@ except NotImplementedError:
 from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
 
 class VoltageSensorWorker(BasePollingWorker):
+    '''Class to read the excitation voltage from the ADC and emit it to the controller.'''
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=200):

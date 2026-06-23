@@ -25,6 +25,7 @@ import serial
 import time
 
 class SPN1SensorWorker(BasePollingWorker):
+    '''Class to read the Delta-T SPN1 and emit it to the controller.'''
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=200):
@@ -33,7 +34,7 @@ class SPN1SensorWorker(BasePollingWorker):
         super().__init__(name, interval_ms)
         
         #PORT = 'COM5'                        # port when connected to my laptop
-        PORT = "/dev/ttyUSB0"                      # port when connected to pi  
+        PORT = "/dev/ttyUSB0"                 # port when connected to pi  
         try:
             # Establish Serial connection
             self.ser = serial.Serial(PORT, 9600, timeout=2)
