@@ -95,7 +95,7 @@ class ConsoleLogger(QObject):
                 print(f"{key}:{data_dict[key]:.6f}")
             else:
                 print([np.array2string(v, precision=1, floatmode='fixed') if isinstance(v, np.ndarray) else str(v) 
-       for v in data_dict[key]()])
+       for v in data_dict[key]])
 
 class FileLogger(QObject):
     """Connects to emitters of data from sensors and writes to
