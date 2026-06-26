@@ -1,0 +1,6 @@
+# Exclude my private file
+data_logs*/
+avaspecx64.dll
+spytfire/avaspec.py
+spytfire/__pycache__/
+sPytfire.code-workspace

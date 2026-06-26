@@ -33,7 +33,12 @@ class BaseWorker(QObject):
     """Override this in subclasses!"""
     def start_work(self):
         raise NotImplementedError()
-        
+    
+    
+    def timestamp(self):
+        """Returns the current time in nanoseconds from the connected."""
+        return time.monotonic_ns()
+
     @Slot()
     def stop_work(self):
         pass
@@ -57,9 +62,6 @@ class BasePollingWorker(BaseWorker):
         self.timer.timeout.connect(self.process)
         self.destroyed.connect(self.timer.deleteLater)
         self.timer.start(self.interval_ms)
-        
-    def timestamp(self):
-        return time.monotonic_ns()
         
     def process(self):
         raise NotImplementedError("Subclasses must implement process()")

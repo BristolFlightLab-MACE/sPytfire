@@ -43,6 +43,7 @@ from spytfire.apogee_sensor import ApogeeSensorWorker, calc_longwave
 from spytfire.bme_sensor import BMESensorWorker
 from spytfire.adafruit_sensor import AdafruitSensorWorker
 from spytfire.opc_sensor import OPCSensorWorker
+from spytfire.spectrometer_sensor import SpecSensorWorker
 from spytfire.spn1_sensor import SPN1SensorWorker
 from spytfire.voltage_sensor import VoltageSensorWorker
 from spytfire.mavlink import MavlinkWorker
@@ -52,6 +53,8 @@ from spytfire.base import SensorWorker, UASWorker
 from pathlib import Path
 from datetime import datetime, timezone
 import sys, signal
+
+import numpy as np
 
 # Creates 'data_logs' and any missing parent folders. 
 # exist_ok=True prevents an error if it already exists.
@@ -63,6 +66,7 @@ Path("data_logs/apogeeLD").mkdir(parents=True, exist_ok=True)
 Path("data_logs/apogeeS").mkdir(parents=True, exist_ok=True)
 Path("data_logs/voltage").mkdir(parents=True, exist_ok=True)
 Path("data_logs/spn1").mkdir(parents=True, exist_ok=True)
+Path("data_logs/spec").mkdir(parents=True, exist_ok=True)
 Path("data_logs/opc").mkdir(parents=True, exist_ok=True)
 
 # ---------------- Output Handlers ----------------
@@ -85,9 +89,13 @@ class ConsoleLogger(QObject):
     def handle_data(self, name, data_dict):
         #pass
         print(name)
-        print(([f"{v:.6f}" for k,v in data_dict.items()]))
-        #for key in data_dict:
-        #    print(f"{key}:{data_dict[key]:.6f}")
+
+        for key in data_dict:
+            if key != 'y':
+                print(f"{key}:{data_dict[key]:.6f}")
+            else:
+                print([np.array2string(v, precision=1, floatmode='fixed') if isinstance(v, np.ndarray) else str(v) 
+       for v in data_dict[key]()])
 
 class FileLogger(QObject):
     """Connects to emitters of data from sensors and writes to
@@ -193,6 +201,15 @@ class FileLogger(QObject):
                     'voltage1'       : {'fmt':'.6f', 'header': "Differential Voltage Up (V)" }
                     }
                 },
+
+            '7616940SP': {
+                'file_prefix': f'{prefix}spec/',
+                'output_file': None,
+                'fields': {
+                    'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'y'              : {'fmt':'.0f', 'header': 'Counts'}
+                    }
+                },
             
             'OPC_N3': {
                 'file_prefix': f'{prefix}opc/',
@@ -283,10 +300,22 @@ class FileLogger(QObject):
             line = f"{self.current_uas_time}"
             
             values_list = []
-            for k in fields_config.keys():
-                fmt = fields_config[k]['fmt']
-                values_list.append(f"{data_dict[k]:{fmt}}")
-                    
+
+            if name != '7616940SP':
+                for k in fields_config.keys():
+                    fmt = fields_config[k]['fmt']
+                    values_list.append(f"{data_dict[k]:{fmt}}")
+            
+            else:
+                for k in fields_config.keys():
+                    if k != 'y':
+                        fmt = fields_config[k]['fmt']
+                        values_list.append(f"{data_dict[k]:{fmt}}")
+
+                    else:
+                        fmt = fields_config[k]['fmt']
+                        values_list.extend(f"{elem:{fmt}}" for elem in data_dict[k])
+
             values = ", ".join(values_list)
             
             output_file.write(line + values + "\n")
@@ -366,6 +395,7 @@ class Controller(QObject):
         self.add_sensor('SL610_1463', sensor_type = 'apogee')
         self.add_sensor('SP510_3985', sensor_type = 'apogee')
         self.add_sensor('SPN1',       sensor_type = 'spn1')
+        self.add_sensor('7616940SP',  sensor_type = 'spec')
         self.add_sensor('OPC_N3',     sensor_type = 'opc')
         self.add_sensor('Ex_volt',    sensor_type = 'voltage')
 
@@ -425,6 +455,7 @@ class Controller(QObject):
             'spn1':     (SPN1SensorWorker, 1000),
             'voltage':  (VoltageSensorWorker, 500),
             'opc':      (OPCSensorWorker, 1000),
+            'spec':     (SpecSensorWorker, 5000),
         }
 
         # Retrieve the class and interval, falling back to defaults

@@ -85,7 +85,7 @@ class SPN1SensorWorker(BasePollingWorker):
                          'diffuse'      : diffuse,
                          'sun_state'    : sun,
                          'case_temp'    : case_t,
-                         'timestamp'    :now
+                         'timestamp'    : now
                          }            
 
             self.data_ready.emit(self.name, spn1_dict)
