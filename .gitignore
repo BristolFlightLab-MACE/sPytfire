@@ -4,3 +4,5 @@ avaspecx64.dll
 spytfire/avaspec.py
 spytfire/__pycache__/
 sPytfire.code-workspace
+.vscode/
+.venv/
