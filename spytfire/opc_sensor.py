@@ -36,6 +36,33 @@ class OPCSensorWorker(BasePollingWorker):
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=200):
+        """
+        A BasePollingWorker to connect and operate an alphasense OPC-N3
+        optical particle counter to measure the size distribution of 
+        aerosol and ash particles in a volcanic plumes.
+
+        Parameters
+        ----------
+        name : string
+            A unique ID for the specific sensor in use
+        interval_ms : int, optional (Default is 200 ms)
+            Provided the repolling time between each measurement start
+
+        Attributes
+        ----------
+        sensor : 
+            The OPC-N3 connection is held by this attribute
+        initialized : bool
+            Value that can be read outside the class to monitor the connection
+        
+        Emits
+        ----------
+        data_ready : dictionary
+            A dictionary object containing information on the current status
+            of the opc-n3, all particle size bins and PM2.5 and PM10 
+            measurements, and a timestamp from the sensor payload computer
+
+        """   
         
         # Pass shared variables to BaseWorker
         super().__init__(name, interval_ms)
@@ -47,17 +74,15 @@ class OPCSensorWorker(BasePollingWorker):
             spi.max_speed_hz = 500000
             spi.lsbfirst = False
 
-            self.dev = opc.detect(spi)
+            self.sensor = opc.detect(spi)
                         
-            self.dev.on()
+            self.sensor.on()
             
         except (NameError, ValueError, serial.SerialException) as e:
             print(f"[{name}] Hardware failure: {e}")
             
-            if hasattr(self,'dev'):
-                self.dev.off()
-                
-            self.sensor = None
+            if hasattr(self,'sensor'):
+                self.sensor.off()
             
             return
         
@@ -71,7 +96,7 @@ class OPCSensorWorker(BasePollingWorker):
     
     def process(self):
         try:                
-            values = self.dev.histogram()
+            values = self.sensor.histogram()
             
             # Create full list of parameters
             channels = {f'bin{i}': values[f'Bin {i}'] for i in range(24)}
@@ -116,12 +141,12 @@ class OPCSensorWorker(BasePollingWorker):
             print(f"\n[CRITICAL ERROR] Initiating Safe Shutdown for {self.name}!")
             print(f"Reason: {reason}")
         
-        if hasattr(self, 'dev') and self.dev is not None:
+        if hasattr(self, 'sensor') and self.sensor is not None:
             try:
                 # Disables both the internal 658nm laser and the sample fan safely
-                self.dev.off()
+                self.sensor.off()
                 print(f"[{self.name}] Laser and Fan powered down successfully.")
-                self.dev.close()
+                self.sensor.close()
             except Exception as shutdown_err:
                 print(f"[{self.name}] Hard hardware control failed: {shutdown_err}")
         else:

@@ -83,9 +83,40 @@ def calc_shortwave(name, voltage0):
     return sw
 
 class ApogeeSensorWorker(BasePollingWorker):
+    
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=200):
+
+        """
+        A BasePollingWorker to connect and operate either 1 or 2
+        components of the Apogee net 4 part net radiometer made from
+        analogue Apogee pyronometers and pyrgeometers.
+
+        Parameters
+        ----------
+        name : string
+            A unique ID for the specific sensor in use
+        interval_ms : int, optional (Default is 200 ms)
+            Provided the repolling time between each measurement start
+
+        Attributes
+        ----------
+        sensor : 
+            The Adafruit ADS1115 I2C connection is held by this attribute
+        initialized : bool
+            Value that can be read outside the class to monitor the connection
+
+        Emits
+        ----------
+        data_ready : dictionary
+            A dictionary object containing information on the two
+            analogue channels on the ADS1115 board that can measure the
+            internal temperature of pyrgeometer and the incoming radiation
+            (either shortwave or longwave depending on the instrument).
+            For pyronometers, 2x instruments should be connected to the
+            same ADS1115
+        """
         
         # Pass shared variables to BaseWorker
         super().__init__(name, interval_ms)
@@ -111,7 +142,7 @@ class ApogeeSensorWorker(BasePollingWorker):
                     raise ValueError('apogee sensor not yet supported')  
             
             # Create the ADC object using the I2C bus
-            self.ads = ADS1115(i2c,address = address)
+            self.sensor = ADS1115(i2c,address = address)
             
         except (NameError, ValueError, OSError, AttributeError) as e:
             print(f"[{name}] Hardware failure: {e}")
@@ -127,17 +158,17 @@ class ApogeeSensorWorker(BasePollingWorker):
                 
         if name == "SL510_1729" or name == "SL610_1463":
             # Create differential input between channel 0 and 1
-            self.chan0 = AnalogIn(self.ads, ads1x15.Pin.A0, ads1x15.Pin.A1)
+            self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
             
             # Create differential input between channel 2 and 3
-            self.chan1 = AnalogIn(self.ads, ads1x15.Pin.A2, ads1x15.Pin.A3)
+            self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
             
         elif name =='SP510_3985' or name =='SP610_1707':
             # Create differential input between channel 0 and 1
-            self.chan0 = AnalogIn(self.ads, ads1x15.Pin.A0, ads1x15.Pin.A1)
+            self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
             
             # Create differential input between channel 2 and 3
-            self.chan1 = AnalogIn(self.ads, ads1x15.Pin.A2, ads1x15.Pin.A3)
+            self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
         
         # Isolate the name of the device so that the calibration coefficents
         # can be used

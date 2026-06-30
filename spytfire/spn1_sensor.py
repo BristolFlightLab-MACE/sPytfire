@@ -29,6 +29,33 @@ class SPN1SensorWorker(BasePollingWorker):
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=200):
+        """
+        A BasePollingWorker to connect and operate a delta-T SPN1
+        sunshine pyronometer to measure the total and diffuse solar 
+        irradiance in a volcanic plume.
+
+        Parameters
+        ----------
+        name : string
+            A unique ID for the specific sensor in use
+        interval_ms : int, optional (Default is 200 ms)
+            Provided the repolling time between each measurement start
+
+        Attributes
+        ----------
+        sensor : 
+            The SPN1 connection is held by this attribute
+        initialized : bool
+            Value that can be read outside the class to monitor the connection
+
+        Emits
+        ----------
+        data_ready : dictionary
+            A dictionary object containing information on the direct and total
+            irradiation measured by the spn1, a determined 'cloudiness' boolean
+            and the sensor payload computer timestamp
+
+        """   
         
         # Pass shared variables to BaseWorker
         super().__init__(name, interval_ms)
@@ -37,7 +64,7 @@ class SPN1SensorWorker(BasePollingWorker):
         PORT = "/dev/ttyUSB0"                 # port when connected to pi  
         try:
             # Establish Serial connection
-            self.ser = serial.Serial(PORT, 9600, timeout=2)
+            self.sensor = serial.Serial(PORT, 9600, timeout=2)
             
         except (NameError, serial.SerialException) as e:
             print(f"[{name}] Hardware failure: {e}")
@@ -54,10 +81,10 @@ class SPN1SensorWorker(BasePollingWorker):
             runtime = 0
             
             # Transmit data over serial connection
-            #self.ser.write(b'?') # Shows possible commands
-            self.ser.write(b'F') # Dumps data
+            #self.sensor.write(b'?') # Shows possible commands
+            self.sensor.write(b'F') # Dumps data
             
-            while self.ser.in_waiting == 0 and runtime < 5:
+            while self.sensor.in_waiting == 0 and runtime < 5:
                 curr = time.time()
                 runtime = curr-start
                 time.sleep(0.01)
@@ -66,7 +93,7 @@ class SPN1SensorWorker(BasePollingWorker):
                 self._safe_shutdown()
             
             # Read raw binary input from SPN1 device
-            raw = self.ser.readline(self.ser.in_waiting)
+            raw = self.sensor.readline(self.sensor.in_waiting)
             
             # Decode ascii characters
             decode = raw.decode('ascii', errors='ignore').strip()
@@ -98,9 +125,9 @@ class SPN1SensorWorker(BasePollingWorker):
             print(f"\n[CRITICAL ERROR] Initiating Safe Shutdown for {self.name}!")
             print(f"Reason: {reason}")
             
-        if hasattr(self, 'ser') and self.ser is not None:
+        if hasattr(self, 'sensor') and self.sensor is not None:
             try:
-                self.ser.close()
+                self.sensor.close()
             except Exception as shutdown_err:
                 print(f"[{self.name}] Serial control failed: {shutdown_err}")
         else:

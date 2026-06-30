@@ -23,7 +23,33 @@ class BMESensorWorker(BasePollingWorker):
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=200):
+        """
+        A BasePollingWorker to connect and operate a BME280 environment
+        sensor that measures surrounding temperature, pressure and 
+        humidity.
+
+        Parameters
+        ----------
+        name : string
+            A unique ID for the specific sensor in use
+        interval_ms : int, optional (Default is 200 ms)
+            Provided the repolling time between each measurement start
+
+        Attributes
+        ----------
+        sensor : 
+            The Pimoroni BME280 I2C connection is held by this attribute
+        initialized : bool
+            Value that can be read outside the class to monitor the connection
         
+        Emits
+        ----------
+        data_ready : dictionary
+            A dictionary object containing information on the temperature,
+            pressure and humidity measured as well as the sensor payload 
+            computer timestamp
+
+        """     
         # Pass shared variables to BaseWorker
         super().__init__(name, interval_ms)
         

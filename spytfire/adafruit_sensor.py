@@ -25,7 +25,32 @@ class AdafruitSensorWorker(BasePollingWorker):
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=1000):
+        """
+        A BasePollingWorker to connect and operate the Adafruit7341 
+        10-channel spectrometer.
+
+        Parameters
+        ----------
+        name : string
+            A unique ID for the specific sensor in use
+        interval_ms : int, optional (Default is 1000 ms)
+            Provided the repolling time between each measurement start
         
+        Attributes
+        ----------
+        sensor : 
+            The Adafruit AS7341 I2C connection is held by this attribute
+        initialized : bool
+            Value that can be read outside the class to monitor the connection
+
+        Emits
+        ----------
+        data_ready : dictionary
+            A dictionary object containing information on each channel,
+            the current exposure time of the spectrometer and the 
+            current timestamp according to the sensor compute
+
+        """                
         # Pass shared variables to BaseWorker
         super().__init__(name, interval_ms)
         
@@ -42,18 +67,13 @@ class AdafruitSensorWorker(BasePollingWorker):
             self.astep = self.sensor.astep
             
             # Exposure time in µs
-            self.exposure_time = (self.atime + 1) * (self.astep + 1)*2.78
+            self.exposure_time = (self.atime + 1) * (self.astep + 1) * 2.78
             
             self.needs_cooldown = False
             
             self.sensor.led_current = 50
-            self.sensor.led = True
-            time.sleep(0.1)
-            self.sensor.led = False
-            time.sleep(0.1)
-            self.sensor.led = True
-            time.sleep(0.1)
-            self.sensor.led = False
+
+            self.flash_LED(2)
             
             self.initialized = True
             
@@ -62,6 +82,16 @@ class AdafruitSensorWorker(BasePollingWorker):
             self.sensor = None
             return
     
+    def flash_LED(self, repeats = 1):
+            loops = 0
+            while loops < repeats:
+                self.sensor.led = True
+                time.sleep(0.1)
+                self.sensor.led = False
+                time.sleep(0.1)
+                loops += 0
+            return
+
     def autoscale_integration(self,readings_list):
         peak = max(readings_list)
         changed = False
@@ -139,9 +169,7 @@ class AdafruitSensorWorker(BasePollingWorker):
             self.data_ready.emit(self.name, channels)
             self.autoscale_integration(data)
             
-            self.sensor.led = True
-            time.sleep(0.1)
-            self.sensor.led = False
+            self.flash_LED()
     
         except Exception as e:
             print(f"Adafruit Read Error: {e}")

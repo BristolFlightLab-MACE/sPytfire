@@ -77,13 +77,37 @@ class SensorWorker(BasePollingWorker):
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=100):
+        """
+        Simulate a completed BasePollingWorker to demonstrate how a sensor
+        worker can interface with the base class.
+
+        Parameters
+        ----------
+        name : string
+            A unique ID for the specific sensor in use
+        interval_ms : int, optional (Default is 100 ms)
+            Provided the repolling time between each measurement start
+
+        Attributes
+        ----------
+        initialized : bool
+            Value that can be read outside the class to monitor the connection
+        
+        Emits
+        ----------
+        data_ready : dictionary
+            A dictionary object containing a randomly generated number and the 
+            sensor payload computer timestamp
+
+        """   
         # Pass shared variables to BaseWorker
         super().__init__(name, interval_ms)
         self.initialized = True
 
     def process(self):
         # Your specific sensor logic here
-        data = {'value': random.random()}
+        data = {'value': random.random(),
+                'time' : self.timestamp()}
         self.data_ready.emit(self.name, data)
         
 # ---------------- Time Worker ----------------

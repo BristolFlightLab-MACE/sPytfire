@@ -29,6 +29,33 @@ class VoltageSensorWorker(BasePollingWorker):
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=200):
+        """
+        A BasePollingWorker that replicates the structure of
+        apogee_sensor.py to use an adafruit ADS1115 to measure the 
+        differential voltage that is placed across apogee longwave
+        sensors.
+
+        Parameters
+        ----------
+        name : string
+            A unique ID for the specific sensor in use
+        interval_ms : int, optional (Default is 200 ms)
+            Provided the repolling time between each measurement start
+
+        Attributes
+        ----------
+        sensor : 
+            The Adafruit ADS1115 I2C connection is held by this attribute
+        initialized : bool
+            Value that can be read outside the class to monitor the connection
+        
+        Emits
+        ----------
+        data_ready : dictionary
+            A dictionary object containing the sensor payload computer 
+            timestamp and the differential voltage across the apogee sensors
+
+        """   
         
         # Pass shared variables to BaseWorker
         super().__init__(name, interval_ms)

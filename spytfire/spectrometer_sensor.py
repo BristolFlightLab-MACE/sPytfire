@@ -33,6 +33,37 @@ class SpecSensorWorker(BasePollingWorker): #Is BasePollingWorker the right class
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=1000):
+        """
+        Operates an Avaspec Nexos spectrometer using the
+        BasePollingWorker class. 
+        
+        ***Code structure may change to more easily substitute different
+        spectrometers and avoid the use of BasePollingWorker to allow
+        more flexibiliy with different integration times
+
+        Parameters
+        ----------
+        name : string
+            A unique ID for the specific sensor in use
+        interval_ms : int, optional (Default is 1000 ms)
+            Provided the repolling time between each measurement start
+        
+        Attributes
+        ----------
+        spectro : 
+            Currently use spectro as the connection attribute
+        initialized : bool
+            Value that can be read outside the class to monitor the connection
+
+        Emits
+        ----------
+        data_ready : dictionary
+            A dictionary object containing the full spectrum measured by
+            the spectrometer as well as the timestamp recorded by the
+            sensor payload computer
+
+        """      
+                
         # Pass shared variables to BaseWorker
         super().__init__(name, interval_ms)
 
@@ -128,6 +159,9 @@ class SpecSensorWorker(BasePollingWorker): #Is BasePollingWorker the right class
 
         while self.nr_scanned < 1 : # wait until data has arrived
             time.sleep(0.0001)
+
+        # Reset number of scans completed
+        nr_scanned = 0
 
         timestamp = self.timestamp() # Get the timestamp immediately after the measurement is complete
     
