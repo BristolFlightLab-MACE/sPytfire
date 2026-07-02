@@ -51,7 +51,8 @@ class SpecSensorWorker(BasePollingWorker): #Is BasePollingWorker the right class
         Attributes
         ----------
         spectro : 
-            Currently use spectro as the connection attribute
+            Currently use spectro as the connection attribute rather than
+            sensor to match iFit formatting
         initialized : bool
             Value that can be read outside the class to monitor the connection
 
@@ -178,9 +179,11 @@ class SpecSensorWorker(BasePollingWorker): #Is BasePollingWorker the right class
         # Create an x and y array for the spectra data to be emitted to the controller
         spectra = np.row_stack([x, y])
 
+        self.spectraldata = y
+
         # Your specific sensor logic here
         data = {'timestamp': timestamp,
-                'y': y}
+                'y': self.spectraldata}
         self.data_ready.emit(self.name, data)
 
     def measure_cb(self,pparam1, pparam2):

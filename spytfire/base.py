@@ -116,7 +116,6 @@ class UASWorker(BaseWorker):
     data_ready = Signal(str)
     
     def __init__(self, name):
-        # We pass interval_ms up, but we won't use it
         super().__init__(name)
         self.initialized = True
 
