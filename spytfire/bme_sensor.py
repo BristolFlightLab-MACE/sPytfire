@@ -39,7 +39,7 @@ class BMESensorWorker(BasePollingWorker):
         ----------
         sensor : 
             The Pimoroni BME280 I2C connection is held by this attribute
-        initialized : bool
+        is_initialized : bool
             Value that can be read outside the class to monitor the connection
         
         Emits

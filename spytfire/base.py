@@ -34,7 +34,6 @@ class BaseWorker(QObject):
     def start_work(self):
         raise NotImplementedError()
     
-    
     def timestamp(self):
         """Returns the current time in nanoseconds from the connected."""
         return time.monotonic_ns()
@@ -49,6 +48,11 @@ class BaseWorker(QObject):
             print(f"Reason: {reason}")
         
         self.initialized = False
+
+    @property
+    def is_initialized(self):
+        """Safe read-only access for the main thread."""
+        return self.initialized
 
 class BasePollingWorker(BaseWorker):
     """Handles workers that require a constant heartbeat timer (Sensors)."""
@@ -90,7 +94,7 @@ class SensorWorker(BasePollingWorker):
 
         Attributes
         ----------
-        initialized : bool
+        is_initialized : bool
             Value that can be read outside the class to monitor the connection
         
         Emits

@@ -52,7 +52,7 @@ class OPCSensorWorker(BasePollingWorker):
         ----------
         sensor : 
             The OPC-N3 connection is held by this attribute
-        initialized : bool
+        is_initialized : bool
             Value that can be read outside the class to monitor the connection
         
         Emits

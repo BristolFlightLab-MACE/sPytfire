@@ -46,7 +46,7 @@ class VoltageSensorWorker(BasePollingWorker):
         ----------
         sensor : 
             The Adafruit ADS1115 I2C connection is held by this attribute
-        initialized : bool
+        is_initialized : bool
             Value that can be read outside the class to monitor the connection
         
         Emits

@@ -32,36 +32,34 @@ class MavlinkWorker(BaseWorker):
         
         self.connection_str = connection_str
         self.channel_name = channel_name
-        self.name = name
-        self.recording = True
-        self.initialized = True
 
-    def start_work(self):
         try:
             # 1. Initialize connection
             self.mav_conn = mavutil.mavlink_connection(self.connection_str,baud=57600)
             print(f"MAVLink listening on {self.connection_str}")
 
-            # 2. Continuous Read Loop
-            while self.initialized:
-                # blocking=True with a timeout lets the CPU rest 
-                # without using Qt Timer.
-                msg = self.mav_conn.recv_match(type=['SYSTEM_TIME','RC_CHANNELS','TIMESYNC'],
-                                             blocking=True, timeout=0.1)
-                
-                if msg:
-                    self.handle_message(msg)
+            self.name = name
+            self.recording = True
+            self.initialized = True
 
         except Exception as e:
             print(f"[-] MAVLink Error: {e}")
-            
-        finally:
-            # Safely close only if self.parent was successfully initialized
-            if hasattr(self, 'mav_conn') and self.mav_conn is not None:
+
+    def start_work(self):
+
+            # Continuous Read Loop
+            while self.initialized:
                 try:
-                    self.mav_conn.close()
-                except Exception as close_error:
-                    print(f"[-] Error closing MAVLink connection: {close_error}")
+                    # blocking=True with a timeout lets the CPU rest 
+                    # without using Qt Timer.
+                    msg = self.mav_conn.recv_match(type=['SYSTEM_TIME','RC_CHANNELS','TIMESYNC'],
+                                                    blocking=True, timeout=0.1)
+                
+                    if msg:
+                        self.handle_message(msg)
+                
+                except Exception as e:
+                    self._safe_shutdown(reason=f"MAVLink Error: {e}")
 
     def handle_message(self, msg):
         """Filter and emit only the data required. Included placeholders."""
@@ -101,4 +99,16 @@ class MavlinkWorker(BaseWorker):
                     mavutil.mavlink.MAV_SEVERITY_INFO,
                     status_text.encode('utf-8')
             )
-    
+                
+    def _safe_shutdown(self, reason="Unknown Error"):
+        if reason != ("User Interrupt (Ctrl+C)"):
+            print(f"\n[CRITICAL ERROR] Initiating Safe Shutdown for {self.name}!")
+            print(f"Reason: {reason}")
+            
+        if hasattr(self, 'mav_conn') and self.mav_conn is not None:
+            try:
+                self.mav_conn.close()
+            except Exception as close_error:
+                print(f"[-] Error closing MAVLink connection: {close_error}")
+            
+        self.initialized = False

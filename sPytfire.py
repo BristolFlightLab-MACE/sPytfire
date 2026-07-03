@@ -36,7 +36,7 @@ connection_str = "/dev/serial0"
 # =========================================================================
 
 # Import pyside6 to create the process for reading data in to an application
-from PySide6.QtCore import QObject, QThread, Slot, QTimer, QCoreApplication, Qt
+from PySide6.QtCore import QObject, QThread, Slot, QTimer, QCoreApplication, Qt, Signal, QEventLoop
 
 # Load custom modules containing the workers for each sensor/connection
 from spytfire.apogee_sensor import ApogeeSensorWorker, calc_longwave
@@ -56,18 +56,7 @@ import sys, signal
 
 import numpy as np
 
-# Creates 'data_logs' and any missing parent folders. 
-# exist_ok=True prevents an error if it already exists.
 Path("data_logs").mkdir(parents=True, exist_ok=True)
-Path("data_logs/bme").mkdir(parents=True, exist_ok=True)
-Path("data_logs/ada").mkdir(parents=True, exist_ok=True)
-Path("data_logs/apogeeLU").mkdir(parents=True, exist_ok=True)
-Path("data_logs/apogeeLD").mkdir(parents=True, exist_ok=True)
-Path("data_logs/apogeeS").mkdir(parents=True, exist_ok=True)
-Path("data_logs/voltage").mkdir(parents=True, exist_ok=True)
-Path("data_logs/spn1").mkdir(parents=True, exist_ok=True)
-Path("data_logs/spec").mkdir(parents=True, exist_ok=True)
-Path("data_logs/opc").mkdir(parents=True, exist_ok=True)
 
 # ---------------- Output Handlers ----------------
 class ConsoleLogger(QObject):
@@ -97,14 +86,22 @@ class ConsoleLogger(QObject):
                 print([np.array2string(v, precision=1, floatmode='fixed') if isinstance(v, np.ndarray) else str(v) 
        for v in data_dict[key]])
 
+    # Create a dummy slot to ignore the arrival of data from the spectrometer            
+    @Slot(str, dict)
+    def handle_spec(self, name, data_dict):
+        pass
+
 class FileLogger(QObject):
     """Connects to emitters of data from sensors and writes to
     files in the data_logs folder."""
+    update_sensor_request = Signal()
+
     def __init__(self, prefix="data_logs/", parent=None):
         super().__init__(parent)
         
         self.thermist_list = ['SL510_1729','SL610_1463']
         self.excitation_voltage = None
+        self.sensor_list = []
         
         # Create dictionary of properties for correctly formatting each sensor's data
         self.SENSOR_CONFIG = {
@@ -124,7 +121,7 @@ class FileLogger(QObject):
                     'channel_680'   : {'fmt':'.0f', 'header': '680 Channel'},
                     'channel_nir'   : {'fmt':'.0f', 'header': 'NIR Channel'},
                     'channel_clr'   : {'fmt':'.0f', 'header': 'CLR Channel'},
-                    'exposure_t' : {'fmt':'.0f', 'header': 'Exposure Time (ms)'},
+                    'exposure_t'    : {'fmt':'.0f', 'header': 'Exposure Time (ms)'},
                     }
                 },
             
@@ -159,8 +156,8 @@ class FileLogger(QObject):
                     'radiative_flux': {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
                     'excite_v'      : {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
                     'sensor_t'      : {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
-                    'voltage0'      : {'fmt':'.6f', 'header': "Differential Voltage0 (V)" },
-                    'voltage1'      : {'fmt':'.6f', 'header': "Differential Voltage1 (V)" }
+                    'voltage0'      : {'fmt':'.6f', 'header': 'Differential Voltage0 (V)' },
+                    'voltage1'      : {'fmt':'.6f', 'header': 'Differential Voltage1 (V)' }
                     }
                 },
             
@@ -172,8 +169,8 @@ class FileLogger(QObject):
                     'radiative_flux': {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
                     'excite_v'      : {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
                     'sensor_t'      : {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
-                    'voltage0'      : {'fmt':'.6f', 'header': "Differential Voltage0 (V)" },
-                    'voltage1'      : {'fmt':'.6f', 'header': "Differential Voltage1 (V)" }
+                    'voltage0'      : {'fmt':'.6f', 'header': 'Differential Voltage0 (V)' },
+                    'voltage1'      : {'fmt':'.6f', 'header': 'Differential Voltage1 (V)' }
                     }
                 },
             
@@ -183,9 +180,9 @@ class FileLogger(QObject):
                 'fields': {
                     'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'radiative_flux0': {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
-                    'voltage0'       : {'fmt':'.6f', 'header': "Differential Voltage Down (V)" },
+                    'voltage0'       : {'fmt':'.6f', 'header': 'Differential Voltage Down (V)' },
                     'radiative_flux1': {'fmt':'.6f', 'header': 'Radiative Flux Up (W/m2)'},
-                    'voltage1'       : {'fmt':'.6f', 'header': "Differential Voltage Up (V)" }
+                    'voltage1'       : {'fmt':'.6f', 'header': 'Differential Voltage Up (V)' }
                     }
                 },
             
@@ -195,10 +192,10 @@ class FileLogger(QObject):
                 'output_file': None,
                 'fields': {
                     'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'radiative_flux0' : {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
-                    'voltage0'       : {'fmt':'.6f', 'header': "Differential Voltage Down (V)" },
+                    'radiative_flux0': {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
+                    'voltage0'       : {'fmt':'.6f', 'header': 'Differential Voltage Down (V)'},
                     'radiative_flux1': {'fmt':'.6f', 'header': 'Radiative Flux Up (W/m2)'},
-                    'voltage1'       : {'fmt':'.6f', 'header': "Differential Voltage Up (V)" }
+                    'voltage1'       : {'fmt':'.6f', 'header': 'Differential Voltage Up (V)'}
                     }
                 },
 
@@ -207,7 +204,7 @@ class FileLogger(QObject):
                 'output_file': None,
                 'fields': {
                     'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'y'              : {'fmt':'.0f', 'header': 'Counts'}
+                    'y'              : {'fmt':'.1f', 'header': 'Counts'}
                     }
                 },
             
@@ -243,12 +240,17 @@ class FileLogger(QObject):
                 'output_file': None,
                 'fields': {
                     'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'excite_v'      : {'fmt':'.6f', 'header': "Excitation Voltage (V)" }
+                    'excite_v'      : {'fmt':'.6f', 'header': 'Excitation Voltage (V)' }
                     }
                 }
             }
         
         self.current_uas_time = "00:00:00.000000"
+        self.recording_active = False
+
+    @Slot()
+    def confirm_setup_complete(self):
+
         self.recording_active = True
         self.set_recording_state(True)
 
@@ -259,7 +261,7 @@ class FileLogger(QObject):
 
     @Slot(str, dict)
     def handle_data(self, name, data_dict):
-              
+
         sensor = self.SENSOR_CONFIG.get(name)
         fields_config = self.SENSOR_CONFIG[name]['fields']
         
@@ -301,50 +303,90 @@ class FileLogger(QObject):
             
             values_list = []
 
-            if name != '7616940SP':
-                for k in fields_config.keys():
-                    fmt = fields_config[k]['fmt']
-                    values_list.append(f"{data_dict[k]:{fmt}}")
-            
-            else:
-                for k in fields_config.keys():
-                    if k != 'y':
-                        fmt = fields_config[k]['fmt']
-                        values_list.append(f"{data_dict[k]:{fmt}}")
-
-                    else:
-                        fmt = fields_config[k]['fmt']
-                        values_list.extend(f"{elem:{fmt}}" for elem in data_dict[k])
+            for k in fields_config.keys():
+                fmt = fields_config[k]['fmt']
+                values_list.append(f"{data_dict[k]:{fmt}}")
 
             values = ", ".join(values_list)
             
             output_file.write(line + values + "\n")
             output_file.flush()
         
+    @Slot(str, dict)
+    def handle_spec(self, name, data_dict):
+
+        sensor_info = self.SENSOR_CONFIG.get(name)
+        fields_config = self.SENSOR_CONFIG[name]['fields']
+
+        self.request_sensor_list()  #TESTING PURPOSES ONLY
+
+        if not sensor_info:
+            raise ValueError('Incorrect sensor name chosen')
+        
+        output_file = sensor_info['output_file']
+
+        if not self.recording_active or (output_file is None):
+            return
+        
+        if output_file and not output_file.closed:
+            line = f"{self.current_uas_time}"
+
+            values_list = []
+            for k in fields_config.keys():
+                if k != 'y':
+                    fmt = fields_config[k]['fmt']
+                    values_list.append(f"{data_dict[k]:{fmt}}")
+                else:
+                    fmt = fields_config[k]['fmt']
+                    values_list.extend(f"{elem:{fmt}}" for elem in data_dict[k])
+
+        values = ", ".join(values_list)
+
+        output_file.write(line + values + "\n")
+        output_file.flush()
+
+    #### NEED TO UPDATE THIS FUNCTION SO IT IS BLOCKING!!!
+    def request_sensor_list(self):
+        """Update the list of sensors to record data from."""
+        self.update_sensor_request.emit()
+
+    @Slot(list)
+    def update_sensor_list(self, sensor_list):
+        self.sensor_list = sensor_list
+
     @Slot(bool)
     def set_recording_state(self, state):
+
+        # Set variable for the current recording state
         self.recording_active = state
-        
-        current_keys = list(self.SENSOR_CONFIG.keys())
+        all_keys = list(self.SENSOR_CONFIG.keys())
         
         # --- START RECORDING: Create New Files ---
         if state:
-            for name in current_keys:
-                sensor = self.SENSOR_CONFIG.get(name)
+            # Update list of sensors currently connected
+            self.request_sensor_list()
+
+            # Set the timestamp that names each file created
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
+            # Check that the folder
+            for name in self.sensor_list:
+                sensor_info = self.SENSOR_CONFIG.get(name)
+
+                # Search for the directory and create the folder if it does not exist
+                Path(sensor_info['file_prefix']).mkdir(parents=True, exist_ok=True)
                 
-                timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-                
-                filename = sensor['file_prefix']+ timestamp +'.txt'
-                output_file = open(filename, "w")
+                filename = sensor_info['file_prefix']+ timestamp
+                output_file = open(filename +'.txt', "w")
                 output_file.write(f"MACE File Version {__fileversion__}\n")
                 
-                # 1. Base metadata headers
+                # Base metadata headers
                 base_headers = ["UAS Time", "Local RX Time (ns)"]
                 
-                # 2. Extract custom sensor headers in their defined order
-                sensor_headers = [info['header'] for info in sensor['fields'].values()]
+                # Extract custom sensor headers in their defined order
+                sensor_headers = [info['header'] for info in sensor_info['fields'].values()]
                 
-                # 3. Combine them into a single comma-separated line
+                # Combine them into a single comma-separated line
                 full_header_line = ", ".join(base_headers + sensor_headers)
                 
                 output_file.write(full_header_line + '\n')
@@ -355,7 +397,7 @@ class FileLogger(QObject):
             
         else:
             # --- STOP RECORDING: Close Current File ---
-            for name in current_keys:
+            for name in all_keys:
                 if self.SENSOR_CONFIG[name]['output_file']:
                     self.SENSOR_CONFIG[name]['output_file'].close()
                     self.SENSOR_CONFIG[name]['output_file'] = None
@@ -363,10 +405,10 @@ class FileLogger(QObject):
                 print("[!] Recording stopped and file closed at {timestamp}.")
             
     def close_file(self):
-        current_keys = list(self.SENSOR_CONFIG.keys())
+        all_keys = list(self.SENSOR_CONFIG.keys())
         
         # --- STOP RECORDING: Close Current File ---
-        for name in current_keys:
+        for name in all_keys:
             if self.SENSOR_CONFIG[name]['output_file'] is not None:
                 self.SENSOR_CONFIG[name]['output_file'].close()
                 self.SENSOR_CONFIG[name]['output_file'] = None
@@ -375,6 +417,8 @@ class FileLogger(QObject):
 
 class Controller(QObject):
     """Setup all emitters and handles while launching each sensor."""
+    setup_complete = Signal()
+    sensor_list = Signal(list)
 
     def __init__(self, handlers, conn_str, rc_channel):
         super().__init__()
@@ -384,9 +428,10 @@ class Controller(QObject):
 
         # Setup MAVLINK
         self._add_mavlink(conn_str, rc_channel)
-        
+
         # Setup UAS Time
-        self._add_uas_time()
+        if self.mav_worker.is_initialized == True:
+            self._add_uas_time()
         
         # Setup Sensors
         self.add_sensor('AdaFruit',   sensor_type = 'adafruit')
@@ -398,6 +443,17 @@ class Controller(QObject):
         self.add_sensor('7616940SP',  sensor_type = 'spec')
         self.add_sensor('OPC_N3',     sensor_type = 'opc')
         self.add_sensor('Ex_volt',    sensor_type = 'voltage')
+
+        for handler in self.handlers:
+            if hasattr(handler, "update_sensor_list"):
+                handler.update_sensor_request.connect(self.monitor_workers)
+                self.sensor_list.connect(handler.update_sensor_list)
+        
+        for handler in self.handlers:
+            if hasattr(handler, "confirm_setup_complete"):
+                self.setup_complete.connect(handler.confirm_setup_complete)
+        
+        self.setup_complete.emit()
 
     def _add_mavlink(self, conn_str, rc_channel):
         # Create the worker
@@ -428,7 +484,6 @@ class Controller(QObject):
         thread = QThread()
         self.uas_worker.moveToThread(thread)
         
-        thread.started.connect(self.mav_worker.start_work)
         thread.finished.connect(self.uas_worker.deleteLater)
         
         # Connect emitted updates from mav_worker to the uas_worker update
@@ -466,7 +521,7 @@ class Controller(QObject):
             print(f"WARNING: Default Worker created for type '{sensor_type}'")
         
         # Check that the worker has been created, and if not, skip the thread handoff
-        if not worker.initialized:
+        if not worker.is_initialized:
 
             # Ensure cleanup of any partial objects
             worker.deleteLater() 
@@ -480,12 +535,23 @@ class Controller(QObject):
         thread.finished.connect(worker.deleteLater)
         
         for handler in self.handlers:
-            worker.data_ready.connect(handler.handle_data)
+            if sensor_type == 'spec':
+                worker.data_ready.connect(handler.handle_spec)
+            else:
+                worker.data_ready.connect(handler.handle_data)
         
         self.threads.append(thread)
         self.workers.append(worker)
         
         thread.start()
+
+    @Slot()
+    def monitor_workers(self):
+        self.curr_workers = []
+        for worker in self.workers:
+            if worker.is_initialized:
+                self.curr_workers.append(worker.name)
+        self.sensor_list.emit(self.curr_workers)
 
     def request_exit(self):
         """Called DIRECTLY by the signal handler."""

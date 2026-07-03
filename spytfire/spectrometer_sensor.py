@@ -53,7 +53,7 @@ class SpecSensorWorker(BasePollingWorker): #Is BasePollingWorker the right class
         spectro : 
             Currently use spectro as the connection attribute rather than
             sensor to match iFit formatting
-        initialized : bool
+        is_initialized : bool
             Value that can be read outside the class to monitor the connection
 
         Emits
@@ -76,35 +76,35 @@ class SpecSensorWorker(BasePollingWorker): #Is BasePollingWorker the right class
         self.nr_scanned = 0
 
         try:
-            ret = av.AVS_Init(-1) 
+            ret = av.AVS_Init(-1)
+
+            if ret == 0:
+                raise ConnectionError("Could not connect to the spectrometer. Please check the connection and try again.")
+            
             ret = av.AVS_GetNrOfDevices()
 
-            if (ret > 0):
-                mylist = av.AvsIdentityType * 1
-                mylist = av.AVS_GetList(1)
-                self.serial_number = str(mylist[0].SerialNumber.decode("utf-8"))
+            mylist = av.AvsIdentityType * 1
+            mylist = av.AVS_GetList(1)
+            self.serial_number = str(mylist[0].SerialNumber.decode("utf-8"))
 
-                self.spectro = av.AVS_Activate(mylist[0])
+            self.spectro = av.AVS_Activate(mylist[0])
 
-                devcon = av.DeviceConfigType()
-                devcon = av.AVS_GetParameter(self.spectro, 63484)
-                self.pixels = devcon.m_Detector_m_NrPixels
+            devcon = av.DeviceConfigType()
+            devcon = av.AVS_GetParameter(self.spectro, 63484)
+            self.pixels = devcon.m_Detector_m_NrPixels
 
-                self.get_wavelengths()
-            
-            else:
-                pass
+            self.get_wavelengths()
 
             ret = av.AVS_UseHighResAdc(self.spectro, True)
 
             # Avaspec recommend directly setting device configuration values
             self.set_config()
 
-        except ConnectionError:
+            self.initialized = True
 
+        except ConnectionError as e:
             self.serial_number = None
-
-        self.initialized = True
+            print(f"[{name}] Hardware failure: {e}")
 
     def set_config(self):
             self.measconfig = av.MeasConfigType()
@@ -162,7 +162,7 @@ class SpecSensorWorker(BasePollingWorker): #Is BasePollingWorker the right class
             time.sleep(0.0001)
 
         # Reset number of scans completed
-        nr_scanned = 0
+        self.nr_scanned = 0
 
         timestamp = self.timestamp() # Get the timestamp immediately after the measurement is complete
     
@@ -205,12 +205,13 @@ class SpecSensorWorker(BasePollingWorker): #Is BasePollingWorker the right class
         if hasattr(self, 'spectro') and self.spectro is not None:
             try:
                 # Disables the spectrometer and closes the connection
-                ret =av.AVS_Done()
+                ret = av.AVS_Done()
+                if ret != 0:
+                    print(f"[{self.name}] Spectrometer shutdown returned error code: {ret}")
+                    
             except Exception as shutdown_err:
                 print(f"[{self.name}] Hard hardware control failed: {shutdown_err}")
 
-            if ret != 0:
-                print(f"[{self.name}] Spectrometer shutdown returned error code: {ret}")
         else:
             print(f"[{self.name}] Cannot disable hardware: Connection reference is missing")
             
