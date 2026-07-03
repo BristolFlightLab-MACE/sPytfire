@@ -250,7 +250,6 @@ class FileLogger(QObject):
 
     @Slot()
     def confirm_setup_complete(self):
-
         self.recording_active = True
         self.set_recording_state(True)
 
@@ -322,28 +321,42 @@ class FileLogger(QObject):
 
         if not sensor_info:
             raise ValueError('Incorrect sensor name chosen')
-        
-        output_file = sensor_info['output_file']
 
-        if not self.recording_active or (output_file is None):
+        if not self.recording_active:
             return
         
-        if output_file and not output_file.closed:
-            line = f"{self.current_uas_time}"
+        if self.nspec > 99999:
+            # Set the timestamp that names each file created
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            self.SENSOR_CONFIG[name]['output_file'] = sensor_info['file_prefix'] + timestamp
+            Path(sensor_info['output_file']).mkdir(parents=True, exist_ok=True)
+            self.nspec = 0
 
-            values_list = []
-            for k in fields_config.keys():
-                if k != 'y':
-                    fmt = fields_config[k]['fmt']
-                    values_list.append(f"{data_dict[k]:{fmt}}")
-                else:
-                    fmt = fields_config[k]['fmt']
-                    values_list.extend(f"{elem:{fmt}}" for elem in data_dict[k])
+        prefix = sensor_info['output_file']
+        
+        spec_fname = f'{prefix}/spectrum_{self.nspec:05d}'
+
+        output_file = open(spec_fname +'.txt', "w")
+
+        line = f"{self.current_uas_time}"
+
+        values_list = []
+        for k in fields_config.keys():
+            if k != 'y':
+                fmt = fields_config[k]['fmt']
+                values_list.append(f"{data_dict[k]:{fmt}}")
+            else:
+                fmt = fields_config[k]['fmt']
+                values_list.extend(f"{elem:{fmt}}" for elem in data_dict[k])
 
         values = ", ".join(values_list)
 
         output_file.write(line + values + "\n")
         output_file.flush()
+        output_file.close()
+
+        print('saved spectrum{:05d}'.format(self.nspec))
+        self.nspec += 1
 
     #### NEED TO UPDATE THIS FUNCTION SO IT IS BLOCKING!!!
     def request_sensor_list(self):
@@ -353,6 +366,7 @@ class FileLogger(QObject):
     @Slot(list)
     def update_sensor_list(self, sensor_list):
         self.sensor_list = sensor_list
+        print(self.sensor_list)
 
     @Slot(bool)
     def set_recording_state(self, state):
@@ -376,29 +390,37 @@ class FileLogger(QObject):
                 # Search for the directory and create the folder if it does not exist
                 Path(sensor_info['file_prefix']).mkdir(parents=True, exist_ok=True)
                 
-                filename = sensor_info['file_prefix']+ timestamp
-                output_file = open(filename +'.txt', "w")
-                output_file.write(f"MACE File Version {__fileversion__}\n")
-                
-                # Base metadata headers
-                base_headers = ["UAS Time", "Local RX Time (ns)"]
-                
-                # Extract custom sensor headers in their defined order
-                sensor_headers = [info['header'] for info in sensor_info['fields'].values()]
-                
-                # Combine them into a single comma-separated line
-                full_header_line = ", ".join(base_headers + sensor_headers)
-                
-                output_file.write(full_header_line + '\n')
-                
-                self.SENSOR_CONFIG[name]['output_file'] = output_file
+                if name == '7616940SP':
+                    self.nspec = 0
+                    filename = sensor_info['file_prefix']+ timestamp
+
+                    Path(sensor_info['file_prefix']+timestamp).mkdir(parents=True, exist_ok=True)
+                    self.SENSOR_CONFIG[name]['output_file'] = filename
+
+                else:    
+                    filename = sensor_info['file_prefix']+ timestamp
+                    output_file = open(filename +'.txt', "w")
+                    output_file.write(f"MACE File Version {__fileversion__}\n")
+                    
+                    # Base metadata headers
+                    base_headers = ["UAS Time", "Local RX Time (ns)"]
+                    
+                    # Extract custom sensor headers in their defined order
+                    sensor_headers = [info['header'] for info in sensor_info['fields'].values()]
+                    
+                    # Combine them into a single comma-separated line
+                    full_header_line = ", ".join(base_headers + sensor_headers)
+                    
+                    output_file.write(full_header_line + '\n')
+                    
+                    self.SENSOR_CONFIG[name]['output_file'] = output_file
 
             print(f"[*] Started recording at {timestamp}")
             
         else:
             # --- STOP RECORDING: Close Current File ---
             for name in all_keys:
-                if self.SENSOR_CONFIG[name]['output_file']:
+                if name != '7616940SP' and self.SENSOR_CONFIG[name]['output_file'] is not None:
                     self.SENSOR_CONFIG[name]['output_file'].close()
                     self.SENSOR_CONFIG[name]['output_file'] = None
                                 
@@ -409,7 +431,7 @@ class FileLogger(QObject):
         
         # --- STOP RECORDING: Close Current File ---
         for name in all_keys:
-            if self.SENSOR_CONFIG[name]['output_file'] is not None:
+            if name != '7616940SP' and self.SENSOR_CONFIG[name]['output_file'] is not None:
                 self.SENSOR_CONFIG[name]['output_file'].close()
                 self.SENSOR_CONFIG[name]['output_file'] = None
 
@@ -515,7 +537,11 @@ class Controller(QObject):
 
         # Retrieve the class and interval, falling back to defaults
         worker_class, interval = sensor_map.get(sensor_type, (SensorWorker, 1000))
-        worker = worker_class(name, interval_ms=interval)
+        if sensor_type == 'spec':
+            worker = worker_class(name)
+        
+        else:
+            worker = worker_class(name, interval_ms=interval)
 
         if sensor_type not in sensor_map:
             print(f"WARNING: Default Worker created for type '{sensor_type}'")

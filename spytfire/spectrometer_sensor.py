@@ -6,7 +6,7 @@ Created on Tue Mar 31 11:39:00 2026
 """
 ### SECTION 1: Import modules for the spectrometer sensor
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
-from spytfire.base import BasePollingWorker
+from spytfire.base import BaseWorker
 
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, Signal, Slot, QTimer, QCoreApplication, Qt
@@ -29,24 +29,21 @@ import numpy as np
 import time# This is the basic structure of a SensorWorker
 
 ### SECTION 2: Create the SpecWorker
-class SpecSensorWorker(BasePollingWorker): #Is BasePollingWorker the right class to inherit from? Maybe want spetra to be continually active.
+class SpecSensorWorker(BaseWorker):
     data_ready = Signal(str, dict)
     
-    def __init__(self, name, interval_ms=1000):
+    def __init__(self, name):
         """
         Operates an Avaspec Nexos spectrometer using the
-        BasePollingWorker class. 
+        BaseWorker class. 
         
         ***Code structure may change to more easily substitute different
-        spectrometers and avoid the use of BasePollingWorker to allow
-        more flexibiliy with different integration times
+        spectrometers
 
         Parameters
         ----------
         name : string
             A unique ID for the specific sensor in use
-        interval_ms : int, optional (Default is 1000 ms)
-            Provided the repolling time between each measurement start
         
         Attributes
         ----------
@@ -66,7 +63,7 @@ class SpecSensorWorker(BasePollingWorker): #Is BasePollingWorker the right class
         """      
                 
         # Pass shared variables to BaseWorker
-        super().__init__(name, interval_ms)
+        super().__init__(name)
 
         # Set some global paramters that are used in process()
         self.spectro = None
@@ -135,7 +132,12 @@ class SpecSensorWorker(BasePollingWorker): #Is BasePollingWorker the right class
         # Write output into the number of pixels
         self.wavelength = x[0:self.pixels]
 
-    def process(self):
+    def start_work(self):
+        while self.initialized:
+            data = self.get_spectrum()
+            self.data_ready.emit(self.name, data)
+        
+    def get_spectrum(self):
 
         self.get_wavelengths()
         x = self.wavelength
@@ -183,8 +185,10 @@ class SpecSensorWorker(BasePollingWorker): #Is BasePollingWorker the right class
 
         # Your specific sensor logic here
         data = {'timestamp': timestamp,
+                'x': self.wavelength,
                 'y': self.spectraldata}
-        self.data_ready.emit(self.name, data)
+        
+        return(data)
 
     def measure_cb(self,pparam1, pparam2):
 
