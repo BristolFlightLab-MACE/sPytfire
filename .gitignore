@@ -1,8 +1,14 @@
-# Exclude my private file
+# Exclude saved data logs from running sPytfire
 data_logs*/
+
+# Exclude proprietary avaspec DLL files
 avaspecx64.dll
 spytfire/avaspec.py
+
+# Exclue pycache files
 spytfire/__pycache__/
+
+# Exclude IDE and virtual environment files
 sPytfire.code-workspace
 .vscode/
 .venv/

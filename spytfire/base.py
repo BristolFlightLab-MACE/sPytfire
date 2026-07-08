@@ -111,7 +111,7 @@ class SensorWorker(BasePollingWorker):
     def process(self):
         # Your specific sensor logic here
         data = {'value': random.random(),
-                'time' : self.timestamp()}
+                'timestamp' : self.timestamp()}
         self.data_ready.emit(self.name, data)
         
 # ---------------- Time Worker ----------------

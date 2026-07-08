@@ -135,6 +135,17 @@ class FileLogger(QObject):
                     'humidity'   : {'fmt':'.2f', 'header': 'Humidity (%)'},
                     }
                 },
+
+            'GPS'       : {
+                'file_prefix': f'{prefix}gps/',
+                'output_file': None,
+                'fields': {
+                    'timestamp'  : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'lat'        : {'fmt':'.6f', 'header': 'Latitude (deg)'},
+                    'lon'        : {'fmt':'.6f', 'header': 'Longitude (deg)'},
+                    'alt'        : {'fmt':'.1f', 'header': 'Altitude (m)'}
+                    }
+                },
             
             'SPN1'      : {
                 'file_prefix': f'{prefix}spn1/', 
@@ -493,6 +504,9 @@ class Controller(QObject):
         for handler in self.handlers:
             if hasattr(handler, "set_recording_state"):
                 self.mav_worker.recording_trigger.connect(handler.set_recording_state)
+        
+        for handler in self.handlers:
+            self.mav_worker.data_ready.connect(handler.handle_data)
           
         self.threads.append(thread)
         self.workers.append(self.mav_worker)

@@ -15,7 +15,7 @@ from spytfire.base import BaseWorker
 import pymavlink.mavutil as mavutil
 
 class MavlinkWorker(BaseWorker):
-    #data_ready = Signal(str, dict)
+    data_ready = Signal(str, dict)
     recording_trigger = Signal(bool)
     uas_time_updated  = Signal('qint64')
 
@@ -72,9 +72,11 @@ class MavlinkWorker(BaseWorker):
             case 'SYSTEM_TIME':                                   #msg_type   2
                 self.uas_time_updated.emit(msg.time_unix_usec)
             case 'GLOBAL_POSITION_INT':
-                msg.lat
-                msg.lon
-                msg.alt
+                data_dict = {'lat': msg.lat,
+                             'lon': msg.lon,
+                             'alt': msg.alt,
+                             'timestamp': self.timestamp()}
+                self.data_ready.emit('GPS',data_dict)
             case 'RC_CHANNELS':                                   #msg_type  35
                 channel_value = getattr(msg, self.channel_name, 1500)
                 if channel_value == 0:
