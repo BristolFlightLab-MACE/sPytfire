@@ -5,6 +5,10 @@ Created on Tue Mar 31 13:00:08 2026
 @author: Matt Varnam
 @email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
 """
+# =============================================================================
+# Define imports
+# =============================================================================
+
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, Signal, Slot, QCoreApplication, Qt
 
@@ -14,7 +18,12 @@ from spytfire.base import BaseWorker
 # Import python mavlink
 import pymavlink.mavutil as mavutil
 
+# =============================================================================
+# Create new BaseWorker for monitoring the MAVlink connection
+# =============================================================================
+
 class MavlinkWorker(BaseWorker):
+    '''Class to read the MAVlink connection and emit data to the controller.'''
     data_ready = Signal(str, dict)
     recording_trigger = Signal(bool)
     uas_time_updated  = Signal('qint64')

@@ -5,6 +5,10 @@ Created on Tue Mar 31 12:04:52 2026
 @author: Matt Varnam
 @email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
 """
+# =============================================================================
+# Define imports
+# =============================================================================
+
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
 from spytfire.base import BasePollingWorker
 
@@ -19,7 +23,12 @@ except ModuleNotFoundError:
 
 from bme280 import BME280
 
+# =============================================================================
+# Create new SensorWorker for controlling the pimoroni BME280
+# =============================================================================
+
 class BMESensorWorker(BasePollingWorker):
+    '''Class to read a BME280 and emit the data to the controller.'''
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=200):

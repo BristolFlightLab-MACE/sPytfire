@@ -7,8 +7,10 @@ sensors. It's structure is very similar to the analogue apogee sensor structure
 
 @author: Matt Varnam
 @email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
-
 """
+# =============================================================================
+# Define imports
+# =============================================================================
 
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
 from spytfire.base import BasePollingWorker
@@ -23,6 +25,10 @@ except NotImplementedError:
     print("Hardware not detected. Running in Simulation Mode.")
     
 from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
+
+# =============================================================================
+# Create new SensorWorker for the internal voltage ADS1115
+# =============================================================================
 
 class VoltageSensorWorker(BasePollingWorker):
     '''Class to read the excitation voltage from the ADC and emit it to the controller.'''

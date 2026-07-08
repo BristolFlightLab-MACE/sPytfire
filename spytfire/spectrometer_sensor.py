@@ -4,9 +4,20 @@ Created on Tue Mar 31 11:39:00 2026
 @author: Matt Varnam
 @email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
 """
-### SECTION 1: Import modules for the spectrometer sensor
+# =============================================================================
+# Define imports
+# =============================================================================
+
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
 from spytfire.base import BaseWorker
+
+# avaspec.py is provided by Avantes and is used to control the spectrometer
+# avaspecx64.dll is also require for Windows, or libavs_0.9.14.0_arm64.deb for 
+# ARM-powered Linux (e.g., Raspberry Pi).
+import spytfire.avaspec as av
+import spytfire.av_errors as av_errors
+
+from spytfire.analysis import AnalysisWorker
 
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, Signal, Slot, QTimer, QCoreApplication, Qt
@@ -17,20 +28,18 @@ import random
 # Provides some useful time options
 from datetime import datetime, timezone
 
-# avaspec.py is provided by Avantes and is used to control the spectrometer
-# avaspecx64.dll is also require for Windows, or libavs_0.9.14.0_arm64.deb for 
-# ARM-powered Linux (e.g., Raspberry Pi).
-import spytfire.avaspec as av
-import spytfire.av_errors as av_errors
-
 # Useful for array manipulation and spectra averaging
 import numpy as np
 
 # Allow timestamping immediately upon data acquisition
-import time# This is the basic structure of a SensorWorker
+import time
 
-### Create the SpecWorker
-class SpecSensorWorker(BaseWorker):
+# =============================================================================
+# Create new BaseWorker for the avaspec spectrometers
+# =============================================================================
+
+class SpecWorker(BaseWorker):
+    '''Class to operate an Avaspec spectrometer and emit data to Controller.'''
     data_ready = Signal(str, dict)
     
     def __init__(self, name):
@@ -172,6 +181,7 @@ class SpecSensorWorker(BaseWorker):
             self.data_ready.emit(self.name, data)
         
     def get_spectrum(self):
+        """Acquire single spectrum and timestamp of the spectrum acquisition"""
 
         self.get_wavelengths()
         x = self.wavelength
@@ -200,10 +210,11 @@ class SpecSensorWorker(BaseWorker):
         while self.nr_scanned < 1 : # wait until data has arrived
             time.sleep(0.0001)
 
+        # Get the timestamp immediately after the measurement is complete
+        timestamp = self.timestamp() 
+
         # Reset number of scans completed
         self.nr_scanned = 0
-
-        timestamp = self.timestamp() # Get the timestamp immediately after the measurement is complete
     
         # Copy date from the spectrometer onto the computer
         ret = av.AVS_GetScopeData(self.spectro)
@@ -213,6 +224,7 @@ class SpecSensorWorker(BaseWorker):
             self._safe_shutdown(reason=f'Spectrometer failed to get scope data with code {ret}: {error_message}')
             return
 
+        # Unpack successful retreival
         timestamp_spec, c_array = ret
 
         y = np.array(c_array)[0:self.pixels]
@@ -226,13 +238,14 @@ class SpecSensorWorker(BaseWorker):
         self.spectraldata = y
 
         # Your specific sensor logic here
-        data = {'timestamp': timestamp,
-                'x': self.wavelength,
-                'y': self.spectraldata}
+        data = {'x': self.wavelength,
+                'y': self.spectraldata,
+                'timestamp': timestamp}
         
         return(data)
 
     def measure_cb(self,pparam1, pparam2):
+        """Callback function to monitor the measurement"""
 
         if pparam1[0] >= 0: 
             self.nr_scanned += 1

@@ -5,6 +5,9 @@ Created on Tue Mar 31 11:39:00 2026
 @author: Matt Varnam
 @email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
 """
+# =============================================================================
+# Define imports
+# =============================================================================
 
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, Signal, Slot, QTimer, QCoreApplication, Qt

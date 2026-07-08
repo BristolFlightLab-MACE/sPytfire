@@ -8,6 +8,9 @@ pygeometers and SP-510 and SP-610 pyronometers
 @author: Matt Varnam
 @email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
 """
+# =============================================================================
+# Define imports
+# =============================================================================
 
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
 from spytfire.base import BasePollingWorker
@@ -82,8 +85,12 @@ def calc_shortwave(name, voltage0):
         
     return sw
 
+# =============================================================================
+# Define the worker to monitor Apogee Sensors through an ADS1115
+# =============================================================================
+
 class ApogeeSensorWorker(BasePollingWorker):
-    
+    '''Class to read an ADS1115 and interpret the voltages as Apogee signals.'''
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=200):

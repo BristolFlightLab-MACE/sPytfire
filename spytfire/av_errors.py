@@ -4,6 +4,9 @@ Created on Mon Jul 06 15:58:00 2026
 @author: Matt Varnam
 @email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
 """
+# =============================================================================
+# Define a function to return the error message of each Avaspec error code
+# =============================================================================
 
 # Error codes for the spectrometer
 def get_av_error_message(error_code):
@@ -64,6 +67,10 @@ def get_av_error_message(error_code):
     error_string = error_messages.get(error_code, "Unknown error code")
 
     return error_string
+
+# =============================================================================
+# Create a short demonstration of the usage of the Avaspec error codes
+# =============================================================================
 
 # Short code demonstrating the error code usage
 if __name__ == "__main__":

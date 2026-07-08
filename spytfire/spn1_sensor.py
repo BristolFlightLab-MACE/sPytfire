@@ -8,6 +8,9 @@ pygeometers and SP-510 and SP-610 pyronometers
 @author: Matt Varnam
 @email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
 """
+# =============================================================================
+# Define imports
+# =============================================================================
 
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
 from spytfire.base import BasePollingWorker
@@ -22,7 +25,12 @@ import numpy as np
 # Can connect to SPN1 over both serial and analogue. We chose serial here
 import serial
 
+# Use time to add delays in loops to prevent overloading of a looped function
 import time
+
+# =============================================================================
+# Create new SensorWorker for the delta-T SPN1
+# =============================================================================
 
 class SPN1SensorWorker(BasePollingWorker):
     '''Class to read the Delta-T SPN1 and emit it to the controller.'''

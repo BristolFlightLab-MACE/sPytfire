@@ -5,7 +5,11 @@ Created on Tue Mar 31 12:56:52 2026
 @author: Matt Varnam
 @email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
 """
-# Import the basic BaseWorker from the base module to apply to Apogee sensors
+# =============================================================================
+# Define imports
+# =============================================================================
+
+# Import the BasePolling Worker from the base module to apply to Apogee sensors
 from spytfire.base import BasePollingWorker
 
 # Import modules for adafruit sensors
@@ -21,7 +25,12 @@ from PySide6.QtCore import Signal
 
 import time
 
+# =============================================================================
+# Define the worker to connect to Adafruit AS7341 spectrometer
+# =============================================================================
+
 class AdafruitSensorWorker(BasePollingWorker):
+    '''Class to read an Adafruit AS7341 10-channel spectrometer.'''
     data_ready = Signal(str, dict)
     
     def __init__(self, name, interval_ms=1000):
