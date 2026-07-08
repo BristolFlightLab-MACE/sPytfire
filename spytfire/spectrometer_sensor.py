@@ -240,7 +240,12 @@ class SpecWorker(BaseWorker):
         # Your specific sensor logic here
         data = {'x': self.wavelength,
                 'y': self.spectraldata,
-                'timestamp': timestamp}
+                'serial_number': self.serial_number,
+                'integration_time': self.measconfig.m_IntegrationTime,
+                'coadds': self.measconfig.m_NrAverages,
+                'timestamp': timestamp,
+                'dark_correction': None,
+                'nonlin_correction': None}
         
         return(data)
 

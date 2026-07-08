@@ -20,7 +20,6 @@ from usbiss.spi import SPI
 
 # This module is needed if running alphasense OPC using USB interface
 #import spidev
-
 import serial
 
 # Libary for operating alphasense OPC
@@ -69,14 +68,17 @@ class OPCSensorWorker(BasePollingWorker):
         super().__init__(name, interval_ms)
         
         try:
+            # Two options depending on whether usb or spi connection is used
             spi = SPI('/dev/ttyACM0')
-            #spi = SPI('COM10')
+            # spi = spidev.SpiDev()
+            # spi.open(0, 0)
+
+            # Return to common code
             spi.mode = 1
             spi.max_speed_hz = 500000
             spi.lsbfirst = False
 
             self.sensor = opc.detect(spi)
-                        
             self.sensor.on()
             
         except (NameError, ValueError, serial.SerialException) as e:
