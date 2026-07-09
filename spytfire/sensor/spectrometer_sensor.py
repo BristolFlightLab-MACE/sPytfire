@@ -10,14 +10,13 @@ Created on Tue Mar 31 11:39:00 2026
 
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
 from spytfire.base import BaseWorker
+from spytfire.spectra_analysis import AnalysisWorker # Not implemented
 
 # avaspec.py is provided by Avantes and is used to control the spectrometer
 # avaspecx64.dll is also require for Windows, or libavs_0.9.14.0_arm64.deb for 
 # ARM-powered Linux (e.g., Raspberry Pi).
-import spytfire.avaspec as av
-import spytfire.av_errors as av_errors
-
-from spytfire.analysis import AnalysisWorker
+import spytfire.sensor.avaspec as av
+import spytfire.sensor.av_errors as av_errors
 
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, Signal, Slot, QTimer, QCoreApplication, Qt

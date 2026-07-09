@@ -80,10 +80,11 @@ class MavlinkWorker(BaseWorker):
             #    pass
             case 'SYSTEM_TIME':                                   #msg_type   2
                 self.uas_time_updated.emit(msg.time_unix_usec)
-            case 'GLOBAL_POSITION_INT':
+            case 'GLOBAL_POSITION_INT':                           #msg_type  33
                 data_dict = {'lat': msg.lat,
                              'lon': msg.lon,
                              'alt': msg.alt,
+                             'vehicle_timestamp': msg.time_boot_ms,
                              'timestamp': self.timestamp()}
                 self.data_ready.emit('GPS',data_dict)
             case 'RC_CHANNELS':                                   #msg_type  35

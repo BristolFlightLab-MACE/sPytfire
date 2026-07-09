@@ -3,10 +3,10 @@ data_logs*/
 
 # Exclude proprietary avaspec DLL files
 avaspecx64.dll
-spytfire/avaspec.py
+spytfire/sensor/avaspec.py
 
-# Exclue pycache files
-spytfire/__pycache__/
+# Exclude pycache files
+*__pycache__
 
 # Exclude IDE and virtual environment files
 sPytfire.code-workspace
