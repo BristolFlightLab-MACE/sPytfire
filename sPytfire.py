@@ -49,8 +49,41 @@ from spytfire.logger.file_logger import FileLogger
 from pathlib import Path
 import sys
 import signal as pysignal
+import yaml
 
+# Create an automatic directory to store output data
 Path("data_logs").mkdir(parents=True, exist_ok=True)
+
+# Load predetermined configuration
+with open('config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
+
+sensor_config = config['sensors']
+
+# Map sensor types to their worker classes
+SENSOR_TYPE_TO_WORKER = {
+    'ada_as7341': AdafruitSensorWorker,
+    'pim_bme280': BMESensorWorker,
+    'apogee'    : ApogeeSensorWorker,
+    'spn1'      : SPN1SensorWorker,
+    'voltage'   : VoltageSensorWorker,
+    'alpha_opc' : OPCSensorWorker,
+    'spec'      : SpecWorker,
+}
+
+# Build SENSOR_TYPES and SENSOR_MAP from config file
+SENSOR_TYPES = [
+    (name, sensor_config['serial_num'], sensor_config['type']) 
+    for name, sensor_config in config.get('sensors', {}).items()
+]
+
+SENSOR_MAP = {
+    sensor_config['type']: (
+        SENSOR_TYPE_TO_WORKER.get(sensor_config['type'], SensorWorker),
+        sensor_config.get('interval', 1000)
+    )
+    for sensor_config in config.get('sensors', {}).values()
+}
 
 # =========================================================================
 #  Key controller class, holding the sensor objects once created
@@ -71,30 +104,24 @@ class Controller(QObject):
         self._add_mavlink(conn_str, rc_channel)
 
         # Setup UAS Time
-        if self.mav_worker.is_initialized == True:
+        if self.mav_worker.is_initialized:
             self._add_uas_time()
-        
-        # Setup Sensors
-        self.add_sensor('AdaFruit',   sensor_type = 'adafruit')
-        self.add_sensor('BME280'  ,   sensor_type = 'bme280')
-        self.add_sensor('SL510_1729', sensor_type = 'apogee')
-        self.add_sensor('SL610_1463', sensor_type = 'apogee')
-        self.add_sensor('SP510_3985', sensor_type = 'apogee')
-        self.add_sensor('SPN1',       sensor_type = 'spn1')
-        self.add_sensor('7616940SP',  sensor_type = 'spec')
-        self.add_sensor('OPC_N3',     sensor_type = 'opc')
-        self.add_sensor('Ex_volt',    sensor_type = 'voltage')
 
+        # Setup Sensors
+        for name, serial_num, sensor_type in SENSOR_TYPES:
+            self.add_sensor(name, serial_num, sensor_type=sensor_type)
+
+        self._connect_handlers()
+        self.setup_complete.emit()
+
+    def _connect_handlers(self):
         for handler in self.handlers:
             if hasattr(handler, "update_sensor_list"):
                 handler.update_sensor_request.connect(self.monitor_workers)
                 self.sensor_list.connect(handler.update_sensor_list)
-        
-        for handler in self.handlers:
+
             if hasattr(handler, "confirm_setup_complete"):
                 self.setup_complete.connect(handler.confirm_setup_complete)
-        
-        self.setup_complete.emit()
 
     def _add_mavlink(self, conn_str, rc_channel):
         # Create the worker
@@ -122,7 +149,7 @@ class Controller(QObject):
         
     def _add_uas_time(self):
         # Create the worker
-        self.uas_worker = UASWorker("UAS_Time")
+        self.uas_worker = UASWorker("UAS_TIME")
         
         # Create a new QThread, then move the worker onto the thread
         thread = QThread()
@@ -144,29 +171,22 @@ class Controller(QObject):
         self.workers.append(self.uas_worker)
         thread.start()
     
-    def add_sensor(self, name, sensor_type = 'default'):
-                
-        # Define a configuration map for your sensors
-        sensor_map = {
-            'adafruit': (AdafruitSensorWorker, 2000),
-            'bme280':   (BMESensorWorker, 500),
-            'apogee':   (ApogeeSensorWorker, 1000),
-            'spn1':     (SPN1SensorWorker, 1000),
-            'voltage':  (VoltageSensorWorker, 500),
-            'opc':      (OPCSensorWorker, 1000),
-            'spec':     (SpecWorker, 5000),
-        }
+    def add_sensor(self, name, serial_num, sensor_type = 'default'):
 
         # Retrieve the class and interval, falling back to defaults
-        worker_class, interval = sensor_map.get(sensor_type, (SensorWorker, 1000))
+        worker_class, interval = SENSOR_MAP.get(sensor_type, (SensorWorker, 1000))
+
         if sensor_type == 'spec':
             worker = worker_class(name)
+
+        elif sensor_type == 'apogee':
+            worker = worker_class(name, serial_num, interval_ms = interval)
         
         else:
             worker = worker_class(name, interval_ms=interval)
 
-        if sensor_type not in sensor_map:
-            print(f"WARNING: Default Worker created for type '{sensor_type}'")
+        if sensor_type not in SENSOR_MAP:
+            print(f"WARNING: Default Worker created for sensor_type '{sensor_type}'")
         
         # Check that the worker has been created, and if not, skip the thread handoff
         if not worker.is_initialized:
@@ -197,8 +217,11 @@ class Controller(QObject):
     def monitor_workers(self):
         self.curr_workers = []
         for worker in self.workers:
-            if worker.is_initialized:
+            if worker.is_initialized and worker.name not in ['MAVLink','UAS_TIME','Pyronometer']:
                 self.curr_workers.append(worker.name)
+            elif worker.is_initialized and worker.name == ['Pyronometer']:
+                self.curr_workers.append('Pyro_Up')
+                self.curr_workers.append('Pyro_Down')
         self.sensor_list.emit(self.curr_workers)
 
     def request_exit(self):

@@ -12,14 +12,14 @@ Created on Tue Mar 31 11:39:00 2026
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, Signal, Slot, QTimer, QCoreApplication, Qt
 
-# Import random to provide random inputs for the demonstration SensorWorker
-import random
-
 # Provides some useful time options
 from datetime import datetime, timezone
 
 # Allow timestamping immediately upon data acquisition
 import time
+
+# Import random to provide random inputs for the demonstration
+import random
 
 class BaseWorker(QObject):
     finished = Signal()
@@ -81,7 +81,7 @@ class BasePollingWorker(BaseWorker):
 
 # This is the basic structure of a SensorWorker
 class SensorWorker(BasePollingWorker):
-    data_ready = Signal(str, dict)
+    data_ready = Signal(str, str, dict)
     
     def __init__(self, name, interval_ms=100):
         """
@@ -91,7 +91,8 @@ class SensorWorker(BasePollingWorker):
         Parameters
         ----------
         name : string
-            A unique ID for the specific sensor in use
+            A unique ID for the specific sensor in use. Set to be the
+            serial number if available
         interval_ms : int, optional (Default is 100 ms)
             Provided the repolling time between each measurement start
 
@@ -109,13 +110,14 @@ class SensorWorker(BasePollingWorker):
         """   
         # Pass shared variables to BaseWorker
         super().__init__(name, interval_ms)
+
         self.initialized = True
 
     def process(self):
         # Your specific sensor logic here
         data = {'value': random.random(),
                 'timestamp' : self.timestamp()}
-        self.data_ready.emit(self.name, data)
+        self.data_ready.emit(self.name, 'default', data)
         
 # ---------------- Time Worker ----------------
 # The Time Worker

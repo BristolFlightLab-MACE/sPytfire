@@ -39,7 +39,7 @@ import time
 
 class SpecWorker(BaseWorker):
     '''Class to operate an Avaspec spectrometer and emit data to Controller.'''
-    data_ready = Signal(str, dict)
+    data_ready = Signal(str, str, dict)
     
     def __init__(self, name):
         """
@@ -177,7 +177,7 @@ class SpecWorker(BaseWorker):
     def start_work(self):
         while self.initialized:
             data = self.get_spectrum()
-            self.data_ready.emit(self.name, data)
+            self.data_ready.emit(self.name, 'spec', data)
         
     def get_spectrum(self):
         """Acquire single spectrum and timestamp of the spectrum acquisition"""

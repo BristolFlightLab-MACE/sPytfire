@@ -24,7 +24,7 @@ import pymavlink.mavutil as mavutil
 
 class MavlinkWorker(BaseWorker):
     '''Class to read the MAVlink connection and emit data to the controller.'''
-    data_ready = Signal(str, dict)
+    data_ready = Signal(str, str, dict)
     recording_trigger = Signal(bool)
     uas_time_updated  = Signal('qint64')
 
@@ -86,7 +86,7 @@ class MavlinkWorker(BaseWorker):
                              'alt': msg.alt,
                              'vehicle_timestamp': msg.time_boot_ms,
                              'timestamp': self.timestamp()}
-                self.data_ready.emit('GPS',data_dict)
+                self.data_ready.emit('GPS', 'gps', data_dict)
             case 'RC_CHANNELS':                                   #msg_type  35
                 channel_value = getattr(msg, self.channel_name, 1500)
                 if channel_value == 0:

@@ -56,11 +56,11 @@ class AnalysisWorker(BaseWorker):
                     ['outp_lon', 'Lon'],
                     ['outp_alt', 'Alt']]
         post_cols = [['outp_intlo', 'int_lo'],
-                        ['outp_inthi', 'int_hi'],
-                        ['outp_intav', 'int_av'],
-                        ['outp_resmax', 'max_resid'],
-                        ['outp_resstd', 'std_resid'],
-                        ['outp_fitqual', 'fit_quality']]
+                    ['outp_inthi', 'int_hi'],
+                    ['outp_intav', 'int_av'],
+                    ['outp_resmax', 'max_resid'],
+                    ['outp_resstd', 'std_resid'],
+                    ['outp_fitqual', 'fit_quality']]
 
         # Add pre columns
         cols = ['File', 'Number', 'Time']

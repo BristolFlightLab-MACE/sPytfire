@@ -34,7 +34,7 @@ import time
 
 class SPN1SensorWorker(BasePollingWorker):
     '''Class to read the Delta-T SPN1 and emit it to the controller.'''
-    data_ready = Signal(str, dict)
+    data_ready = Signal(str, str, dict)
     
     def __init__(self, name, interval_ms=200):
         """
@@ -123,7 +123,7 @@ class SPN1SensorWorker(BasePollingWorker):
                          'timestamp'    : now
                          }            
 
-            self.data_ready.emit(self.name, spn1_dict)
+            self.data_ready.emit(self.name, 'spn1', spn1_dict)
             
         except Exception as e:
             print(f"SPN1 Read Error: {e}")

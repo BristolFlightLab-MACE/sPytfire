@@ -32,7 +32,7 @@ from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
 
 class VoltageSensorWorker(BasePollingWorker):
     '''Class to read the excitation voltage from the ADC and emit it to the controller.'''
-    data_ready = Signal(str, dict)
+    data_ready = Signal(str, str, dict)
     
     def __init__(self, name, interval_ms=200):
         """
@@ -97,7 +97,7 @@ class VoltageSensorWorker(BasePollingWorker):
                             'timestamp': self.timestamp()
                           }
             
-            self.data_ready.emit(self.name, voltage_dict)
+            self.data_ready.emit(self.name, 'voltage', voltage_dict)
             
         except Exception as e:
             print(f"Voltage Read Error: {e}")

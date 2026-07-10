@@ -27,8 +27,8 @@ class ConsoleLogger(QObject):
         #print(f"[Time] {uas_time}")
 
     # Crate a slot for the arrival of data from the sensors
-    @Slot(str, dict)
-    def handle_data(self, name, data_dict):
+    @Slot(str, str, dict)
+    def handle_data(self, name, sensor_type, data_dict):
         #pass
         print(name)
 
@@ -40,6 +40,6 @@ class ConsoleLogger(QObject):
                        for v in data_dict[key]])
 
     # Create a dummy slot to ignore the arrival of data from the spectrometer            
-    @Slot(str, dict)
-    def handle_spec(self, name, data_dict):
+    @Slot(str, str, dict)
+    def handle_spec(self, name, sensor_type, data_dict):
         pass

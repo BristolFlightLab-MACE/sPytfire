@@ -1,0 +1,46 @@
+# Automatic definitions of sensor types
+sensors:
+  AdaFruit:
+    serial_num: null
+    type: ada_as7341
+    interval: 2000
+
+  BME280:
+    serial_num: null
+    type: pim_bme280
+    interval: 500
+
+  Pygeo_Up:
+    serial_num: SL510_1729
+    type: apogee
+    interval: 1000
+  
+  Pygeo_Down:
+    serial_num: SL610_1463
+    type: apogee
+    interval: 1000
+
+  Pyronometer:
+    serial_num: [SP510_3985, SP610_1707]
+    type: apogee
+    interval: 1000
+
+  SPN1:
+    serial_num: null
+    type: spn1
+    interval: 1000
+
+  UV_Spec:
+    serial_num: null
+    type: spec
+    interval: null
+
+  OPC:
+    serial_num: null
+    type: alpha_opc
+    interval: 1000
+
+  I2C_V:
+    serial_num: null
+    type: voltage
+    interval: 500

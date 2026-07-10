@@ -17,7 +17,7 @@ try:
     import board
 except NotImplementedError:
     print("Hardware not detected. Running in Simulation Mode.")
-    
+
 from adafruit_as7341 import AS7341, Gain
 
 # Import Signal from PySide to allow the workers to send signals
@@ -31,8 +31,8 @@ import time
 
 class AdafruitSensorWorker(BasePollingWorker):
     '''Class to read an Adafruit AS7341 10-channel spectrometer.'''
-    data_ready = Signal(str, dict)
-    
+    data_ready = Signal(str, str, dict)
+
     def __init__(self, name, interval_ms=1000):
         """
         A BasePollingWorker to connect and operate the Adafruit7341 
@@ -44,7 +44,7 @@ class AdafruitSensorWorker(BasePollingWorker):
             A unique ID for the specific sensor in use
         interval_ms : int, optional (Default is 1000 ms)
             Provided the repolling time between each measurement start
-        
+
         Attributes
         ----------
         sensor : 
@@ -59,10 +59,10 @@ class AdafruitSensorWorker(BasePollingWorker):
             the current exposure time of the spectrometer and the 
             current timestamp according to the sensor compute
 
-        """                
+        """
         # Pass shared variables to BaseWorker
         super().__init__(name, interval_ms)
-        
+
         try:
             # Setup
             i2c = board.I2C() # uses board.SCL and board.SDA
@@ -77,12 +77,12 @@ class AdafruitSensorWorker(BasePollingWorker):
             
             # Exposure time in µs
             self.exposure_time = (self.atime + 1) * (self.astep + 1) * 2.78
-            
+
             self.needs_cooldown = False
-            
+
             self.sensor.led_current = 50
 
-            self.flash_LED(2)
+            self.flash_LED(repeats = 2)
             
             self.initialized = True
             
@@ -98,7 +98,7 @@ class AdafruitSensorWorker(BasePollingWorker):
                 time.sleep(0.1)
                 self.sensor.led = False
                 time.sleep(0.1)
-                loops += 0
+                loops += 1
             return
 
     def autoscale_integration(self,readings_list):
@@ -175,7 +175,7 @@ class AdafruitSensorWorker(BasePollingWorker):
                         'timestamp': self.timestamp()
                         }
             
-            self.data_ready.emit(self.name, channels)
+            self.data_ready.emit(self.name, 'ada_as7341', channels)
             self.autoscale_integration(data)
             
             self.flash_LED()

@@ -29,10 +29,43 @@ try:
     import board
 except NotImplementedError:
     print("Hardware not detected. Running in Simulation Mode.")
-    
+
 from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
 
-def calc_longwave(model, voltage0, voltage1, excitation):
+def find_coefficients(serial_num):
+
+    # SL-510-SS_1729 coefficients
+    if serial_num == 'SL510_1729':
+        k1 = 8.410 #W m-2 mV-1
+        k2 = 1.023 #Unitless
+        k = [k1, k2]
+
+    # SL-610-SS_1463 coefficients
+    elif serial_num == 'SL610_1463':
+        k1 = 8.610 #W m-2 mV-1
+        k2 = 1.029 #Unitless
+        k = [k1, k2]
+
+    # Calibration constant of SP-510-SS 3985
+    elif serial_num == 'SP510_3985':
+        k = 22.78
+
+    # Calibration constant of SP-610-SS 1707
+    elif serial_num == 'SP610_1707':
+        k = 28.99
+
+    else:
+        print(f'Unknown apogee instrument {serial_num}')
+
+
+    return k
+
+def calc_longwave(k, voltage0, voltage1, excitation):
+
+    # Extract calibration coefficients
+    k1,k2 = k
+
+    # Calculate temperature
     Rt = 24900*(voltage1/(excitation-voltage1))
     
     # Steinhart-Hart equation coefficients (above and below O doesn't change
@@ -43,7 +76,6 @@ def calc_longwave(model, voltage0, voltage1, excitation):
     B = 2.21451E-4
     C = 1.26233E-7
     
-
     Tk = np.divide(1, A + B * np.log(Rt) + C * np.power(np.log(Rt),3))
 
     '''
@@ -55,32 +87,14 @@ def calc_longwave(model, voltage0, voltage1, excitation):
         Tk = np.divide(1, A + B * np.log(Rt) + C * np.power(np.log(Rt),3))
     '''
     
-    # SL-510-SS_1729 coefficients
-    if model == 'SL510_1729':
-        k1 = 8.410 #W m-2 mV-1
-        k2 = 1.023 #Unitless
-        
-    # SL-610-SS_1463 coefficients        
-    elif model == 'SL610_1463':
-        k1 = 8.610 #W m-2 mV-1
-        k2 = 1.029 #Unitless
-    
     boltz = 5.6704E-8 #W m-2 K-4
     
     LW = k1*voltage0*1000 + k2*boltz*np.power(Tk,4)
     
     return Tk,LW
 
-def calc_shortwave(name, voltage0):
-    
-    # Calibration constant of SP-510-SS 3985
-    if name == 'SP510_3985':
-        k = 22.78
-    
-    # Calibration constant of SP-610-SS 1707
-    if name == 'SP610_1707':
-        k = 28.99
-    
+def calc_shortwave(k, voltage0):
+        
     sw = k * voltage0 * 1000
         
     return sw
@@ -91,9 +105,9 @@ def calc_shortwave(name, voltage0):
 
 class ApogeeSensorWorker(BasePollingWorker):
     '''Class to read an ADS1115 and interpret the voltages as Apogee signals.'''
-    data_ready = Signal(str, dict)
+    data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, interval_ms=200):
+    def __init__(self, name, serial_num, interval_ms=200):
 
         """
         A BasePollingWorker to connect and operate either 1 or 2
@@ -104,6 +118,9 @@ class ApogeeSensorWorker(BasePollingWorker):
         ----------
         name : string
             A unique ID for the specific sensor in use
+        serial_num : string
+            The specific apogee instrument in use (needed to retrieve
+            calibration coefficients)
         interval_ms : int, optional (Default is 200 ms)
             Provided the repolling time between each measurement start
 
@@ -127,22 +144,21 @@ class ApogeeSensorWorker(BasePollingWorker):
         
         # Pass shared variables to BaseWorker
         super().__init__(name, interval_ms)
-        
+
+        self.serial_num = serial_num
+
         try:
             # Create the I2C bus
             i2c = board.I2C()
             
-            match name:
-                case 'SL510_1729':
+            match self.name:
+                case 'Pygeo_Up':
                     address = 75  # SCL
                     
-                case 'SL610_1463':
+                case 'Pygeo_Down':
                     address = 72  # GND
                     
-                case 'SP510_3985':
-                    address = 73  # VIN
-                    
-                case 'SP610_1707':
+                case 'Pyronometer':
                     address = 73  # VIN
                     
                 case _:
@@ -152,48 +168,54 @@ class ApogeeSensorWorker(BasePollingWorker):
             self.sensor = ADS1115(i2c,address = address)
             
         except (NameError, ValueError, OSError, AttributeError) as e:
-            print(f"[{name}] Hardware failure: {e}")
+            print(f"[{self.name}] Hardware failure: {e}")
             
-            # CLEANUP: If the bus was created but sensor failed, release the bus
             if hasattr(self, 'i2c') and self.i2c:
                 try:
                     self.i2c.deinit()
                 except:
-                    pass 
-            self.sensor = None
+                    pass
             return
-                
-        if name == "SL510_1729" or name == "SL610_1463":
+
+        if address == 75 or address == 72:
             # Create differential input between channel 0 and 1
             self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
             
             # Create differential input between channel 2 and 3
             self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
             
-        elif name =='SP510_3985' or name =='SP610_1707':
+        elif address == 73 and type(self.serial_num) == list:
             # Create differential input between channel 0 and 1
             self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
             
             # Create differential input between channel 2 and 3
             self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
-        
-        # Isolate the name of the device so that the calibration coefficents
-        # can be used
-        self.model = name
-        
+
+        elif address == 73:
+            # Create single differential input between channel 0 and 1
+            self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
+
         self.initialized = True
     
     def process(self):
         try:
-            if self.model == "SL510_1729" or self.model == "SL610_1463":
+            if self.name == "Pygeo_Up" or self.name == "Pygeo_Down":
+                
                 v0, v1 = self.chan0.voltage,self.chan1.voltage
                 
                 excitation_v = 3.2827
                 
+                k = find_coefficients(self.serial_num)
+
                 # Move calculation to main
-                temp,longwave = calc_longwave(self.model, v0, v1, excitation_v)
+                temp,longwave = calc_longwave(k, v0, v1, excitation_v)
                 
                 temp = temp - 273.15
+
+                if self.name == 'Pygeo_Up':
+                    sensor_type = 'apogee_lu'
+                else:
+                    sensor_type = 'apogee_ld'
                 
                 apogee_dict = {'voltage0': v0,
                                'voltage1': v1,
@@ -202,8 +224,10 @@ class ApogeeSensorWorker(BasePollingWorker):
                                'excite_v': excitation_v,
                                'timestamp': self.timestamp()
                               }
+                
+                self.data_ready.emit(self.name, sensor_type, apogee_dict)
             
-            elif self.model == 'SP510_3985' or self.model == 'SP610_1707':
+            elif self.name == 'Pyronometer' and type(self.serial_num) == list:
                 
                 _ = self.chan0.voltage      # throw away stale conversion
                 time.sleep(0.01)
@@ -213,17 +237,41 @@ class ApogeeSensorWorker(BasePollingWorker):
                 _ = self.chan1.voltage
                 time.sleep(0.01)
                 v1 = self.chan1.voltage
+
+                k0 = find_coefficients(self.serial_num[0])
+                k1 = find_coefficients(self.serial_num[1])
+
+                shortwave0 = calc_shortwave(k0, v0)
+                shortwave1 = calc_shortwave(k1, v1)
                 
-                shortwave0 = calc_shortwave('SP510_3985', v0)
-                shortwave1 = calc_shortwave('SP610_1707', v1)
-                
-                apogee_dict = {'voltage0': v0,
-                               'radiative_flux0': shortwave0,
-                               'voltage1': v1,
-                               'radiative_flux1': shortwave1,
-                               'timestamp': self.timestamp()
+                timestamp = self.timestamp()
+
+                apogee_dict = {'voltage': v0,
+                               'radiative_flux': shortwave0,
+                               'timestamp': timestamp
                               }
-            self.data_ready.emit(self.model, apogee_dict)
+                self.data_ready.emit(self.name, 'apogee_su', apogee_dict)
+
+                apogee_dict = {'voltage': v1,
+                               'radiative_flux': shortwave1,
+                               'timestamp': timestamp
+                              }
+                self.data_ready.emit(self.name, 'apogee_sd', apogee_dict)
             
         except Exception as e:
             print(f"Apogee Read Error: {e}")
+
+    def _safe_shutdown(self,reason="Unknown Error"):   
+        if reason != ("User Interrupt (Ctrl+C)"):
+            print(f"\n[CRITICAL ERROR] Initiating Safe Shutdown for {self.name}!")
+            print(f"Reason: {reason}")
+
+        # CLEANUP: If the bus was created but sensor failed, release the bus
+            if hasattr(self, 'i2c') and self.i2c:
+                try:
+                    self.i2c.deinit()
+                except:
+                    pass 
+            self.sensor = None
+        
+        self.initialized = False

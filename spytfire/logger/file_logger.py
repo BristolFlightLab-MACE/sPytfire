@@ -11,13 +11,23 @@ import numpy as np
 from pathlib import Path
 import os
 
-from spytfire.sensor.apogee_sensor import calc_longwave
+from spytfire.sensor.apogee_sensor import calc_longwave, find_coefficients
 
 from datetime import datetime, timezone
+
+import yaml
 
 __version__ = '1.2'
 __fileversion__ = '1.2'
 __author__ = 'Matthew Varnam'
+with open('config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
+
+sensor_config2 = config['sensors']
+sensor_config2['Pyro_Up']    = {'serial_num': None, 'type': 'apogee_su', 'interval': 2000}
+sensor_config2['Pyro_Down']  = {'serial_num': None, 'type': 'apogee_sd', 'interval': 2000}
+sensor_config2['Pygeo_Up']   = {'serial_num': None, 'type': 'apogee_lu', 'interval': 2000}
+sensor_config2['Pygeo_Down'] = {'serial_num': None, 'type': 'apogee_ld', 'interval': 2000}
 
 # =========================================================================
 #  Logger to save measured data to files
@@ -30,7 +40,7 @@ class FileLogger(QObject):
     def __init__(self, prefix="data_logs/", parent=None):
         super().__init__(parent)
         
-        self.thermist_list = ['SL510_1729','SL610_1463']
+        self.thermist_list = ['apogee_lu','apogee_ld']
         self.excitation_voltage = None
         self.loc = {'lat': None,
                     'lon': None,
@@ -41,7 +51,7 @@ class FileLogger(QObject):
         # Create dictionary of properties for correctly formatting each sensor's data
         self.SENSOR_CONFIG = {                                # Convert to .yaml file
 
-            'AdaFruit': {
+            'ada_as7341': {
                 'file_prefix': f'{prefix}ada/',
                 'output_file': None,
                 'fields': {
@@ -60,7 +70,7 @@ class FileLogger(QObject):
                     }
                 },
             
-            'BME280': {
+            'pim_bme280': {
                 'file_prefix': f'{prefix}bme/',
                 'output_file': None,
                 'fields': {
@@ -71,7 +81,7 @@ class FileLogger(QObject):
                     }
                 },
 
-            'GPS'       : {
+            'gps'       : {
                 'file_prefix': f'{prefix}gps/',
                 'output_file': None,
                 'fields': {
@@ -82,7 +92,7 @@ class FileLogger(QObject):
                     }
                 },
             
-            'SPN1'      : {
+            'spn1'      : {
                 'file_prefix': f'{prefix}spn1/', 
                 'output_file': None,
                 'fields': {
@@ -94,7 +104,7 @@ class FileLogger(QObject):
                     }
                 },
             
-            'SL510_1729': {
+            'apogee_lu': {
                 'file_prefix': f'{prefix}apogeeLU/',
                 'output_file': None,
                 'fields': {
@@ -107,7 +117,7 @@ class FileLogger(QObject):
                     }
                 },
             
-            'SL610_1463': {
+            'apogee_ld': {
                 'file_prefix': f'{prefix}apogeeLD/',
                 'output_file': None,
                 'fields': {
@@ -120,32 +130,27 @@ class FileLogger(QObject):
                     }
                 },
             
-            'SP510_3985': {
-                'file_prefix': f'{prefix}apogeeS/',
+            'apogee_su': {
+                'file_prefix': f'{prefix}apogeeSU/',
                 'output_file': None,
                 'fields': {
                     'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'radiative_flux0': {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
-                    'voltage0'       : {'fmt':'.6f', 'header': 'Differential Voltage Down (V)' },
-                    'radiative_flux1': {'fmt':'.6f', 'header': 'Radiative Flux Up (W/m2)'},
-                    'voltage1'       : {'fmt':'.6f', 'header': 'Differential Voltage Up (V)' }
+                    'radiative_flux' : {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
+                    'voltage'        : {'fmt':'.6f', 'header': 'Differential Voltage Down (V)' }
                     }
                 },
             
-            # Note currently not in use due to two shortwave sensors connecting to the same ADC
-            'SP610_1707': {
-                'file_prefix': f'{prefix}apogeeS/',
+            'apogee_sd': {
+                'file_prefix': f'{prefix}apogeeSD/',
                 'output_file': None,
                 'fields': {
                     'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'radiative_flux0': {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
-                    'voltage0'       : {'fmt':'.6f', 'header': 'Differential Voltage Down (V)'},
-                    'radiative_flux1': {'fmt':'.6f', 'header': 'Radiative Flux Up (W/m2)'},
-                    'voltage1'       : {'fmt':'.6f', 'header': 'Differential Voltage Up (V)'}
+                    'radiative_flux' : {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
+                    'voltage'        : {'fmt':'.6f', 'header': 'Differential Voltage Down (V)'}
                     }
                 },
 
-            '7616940SP': {
+            'spec': {
                 'file_prefix': f'{prefix}spec/',
                 'output_file': None,
                 'fields': {
@@ -154,7 +159,7 @@ class FileLogger(QObject):
                     }
                 },
             
-            'OPC_N3': {
+            'opc': {
                 'file_prefix': f'{prefix}opc/',
                 'output_file': None,
                 'fields': {
@@ -180,7 +185,7 @@ class FileLogger(QObject):
                     }
                 },
             
-            'Ex_volt':{
+            'voltage':{
                 'file_prefix':f'{prefix}voltage/',
                 'output_file': None,
                 'fields': {
@@ -203,11 +208,11 @@ class FileLogger(QObject):
         if uas_time != datetime.fromtimestamp(0 / 1_000_000.0) and uas_time:
             self.current_uas_time = uas_time
 
-    @Slot(str, dict)
-    def handle_data(self, name, data_dict):
+    @Slot(str, str, dict)
+    def handle_data(self, name, sensor_type, data_dict):
 
-        sensor = self.SENSOR_CONFIG.get(name)
-        fields_config = self.SENSOR_CONFIG[name]['fields']
+        sensor = self.SENSOR_CONFIG.get(sensor_type)
+        fields_config = self.SENSOR_CONFIG[sensor_type]['fields']
         
         if not sensor:
             raise ValueError('Incorrect sensor name chosen')
@@ -215,13 +220,13 @@ class FileLogger(QObject):
         output_file = sensor['output_file']
         
         # Update excitation voltage to most recently measured value
-        if name == 'Ex_volt':
+        if sensor_type == 'voltage':
             if data_dict['excite_v'] > 2.5 and data_dict['excite_v'] < 3.5:
                 self.excitation_voltage = data_dict['excite_v']
             else:
                 self.excitation_voltage = None
         
-        elif name == 'gps':
+        elif sensor_type == 'gps':
             for key in ['lat','lon','alt']:
                 if data_dict[key] is not None:
                     self.loc[key] = data_dict[key]
@@ -230,12 +235,18 @@ class FileLogger(QObject):
             return
         
         # Recalculate longwave radiation from measured excitation voltage
-        if name in self.thermist_list:
+        if sensor_type in self.thermist_list:
             if self.excitation_voltage is not None:
                 voltage0, voltage1 = data_dict['voltage0'],data_dict['voltage1']
-                model = name
                 
-                tk, lw = calc_longwave(model, voltage0, voltage1, self.excitation_voltage)
+                ### HARDCODED ATM
+                if sensor_type == 'apogee_lu':
+                    serial_num = 'SL510_1729'
+                elif sensor_type == 'apogee_ld':
+                    serial_num = 'SL610_1463'
+                k = find_coefficients(serial_num)
+
+                tk, lw = calc_longwave(k, voltage0, voltage1, self.excitation_voltage)
                 
                 # Convert to Celcius from Kelvin
                 tk = tk - 273.15
@@ -260,8 +271,8 @@ class FileLogger(QObject):
             output_file.write(line + values + "\n")
             output_file.flush()
         
-    @Slot(str, dict)
-    def handle_spec(self, name, data_dict):
+    @Slot(str, str, dict)
+    def handle_spec(self, name, sensor_type, data_dict):
 
         sensor_info = self.SENSOR_CONFIG.get(name)
         fields_config = self.SENSOR_CONFIG[name]['fields']
@@ -345,17 +356,18 @@ class FileLogger(QObject):
 
             # Check that the folder
             for name in self.sensor_list:
-                sensor_info = self.SENSOR_CONFIG.get(name)
+                sensor_type = sensor_config2[name]['type']
+                sensor_info = self.SENSOR_CONFIG.get(sensor_type)
 
                 # Search for the directory and create the folder if it does not exist
                 Path(sensor_info['file_prefix']).mkdir(parents=True, exist_ok=True)
                 
-                if name == '7616940SP':
+                if name == 'UV_Spec':
                     self.nspec = 0
                     filename = sensor_info['file_prefix']+ timestamp
 
                     Path(sensor_info['file_prefix']+timestamp).mkdir(parents=True, exist_ok=True)
-                    self.SENSOR_CONFIG[name]['output_file'] = filename
+                    self.SENSOR_CONFIG[sensor_info]['output_file'] = filename
 
                 else:    
                     filename = sensor_info['file_prefix']+ timestamp
@@ -373,7 +385,7 @@ class FileLogger(QObject):
                     
                     output_file.write(full_header_line + '\n')
                     
-                    self.SENSOR_CONFIG[name]['output_file'] = output_file
+                    self.SENSOR_CONFIG[sensor_info] = output_file
 
             print(f"[*] Started recording at {timestamp}")
             

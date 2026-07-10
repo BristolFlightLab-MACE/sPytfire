@@ -33,7 +33,7 @@ import time
 
 class OPCSensorWorker(BasePollingWorker):
     '''Class to read the alphasense OPC-N3 and emit it to the controller.'''
-    data_ready = Signal(str, dict)
+    data_ready = Signal(str, str, dict)
     
     def __init__(self, name, interval_ms=200):
         """
@@ -114,7 +114,7 @@ class OPCSensorWorker(BasePollingWorker):
             channels['laser_status'] = values['Laser status']
             channels['timestamp'] = self.timestamp()
             
-            self.data_ready.emit(self.name, channels)
+            self.data_ready.emit(self.name, 'opc', channels)
             self.consecutive_failures = 0
         
         except (KeyError, ValueError) as data_err:

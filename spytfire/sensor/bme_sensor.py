@@ -29,7 +29,7 @@ from bme280 import BME280
 
 class BMESensorWorker(BasePollingWorker):
     '''Class to read a BME280 and emit the data to the controller.'''
-    data_ready = Signal(str, dict)
+    data_ready = Signal(str, str, dict)
     
     def __init__(self, name, interval_ms=200):
         """
@@ -87,7 +87,7 @@ class BMESensorWorker(BasePollingWorker):
                         'timestamp': self.timestamp()
                         }
             
-            self.data_ready.emit(self.name, bme_dict)
+            self.data_ready.emit(self.name, 'pim_bme280', bme_dict)
             self.consecutive_failures = 0
             
         except (Exception, RuntimeError) as e:
