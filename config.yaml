@@ -1,4 +1,5 @@
-# Automatic definitions of sensor types
+# Design the sensor configuration to be attempted. Note
+# that unsuccessful sensor processes will be aborted.
 sensors:
   AdaFruit:
     serial_num: null
@@ -25,7 +26,7 @@ sensors:
     type: apogee
     interval: 1000
 
-  SPN1:
+  Sunshine_Pyro:
     serial_num: null
     type: spn1
     interval: 1000

@@ -59,10 +59,11 @@ class BaseWorker(QObject):
 
 class BasePollingWorker(BaseWorker):
     """Handles workers that require a constant heartbeat timer (Sensors)."""
-    def __init__(self, name, interval_ms=100):
+    def __init__(self, name, serial_num = None, interval_ms=100):
         super().__init__(name)
         self.interval_ms = interval_ms
         self.timer = None
+        self.serial_num = serial_num
 
     def start_work(self):
         self.timer = QTimer(self)
@@ -83,7 +84,7 @@ class BasePollingWorker(BaseWorker):
 class SensorWorker(BasePollingWorker):
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, interval_ms=100):
+    def __init__(self, name, serial_num = None, interval_ms=100):
         """
         Simulate a completed BasePollingWorker to demonstrate how a sensor
         worker can interface with the base class.
@@ -109,7 +110,7 @@ class SensorWorker(BasePollingWorker):
 
         """   
         # Pass shared variables to BaseWorker
-        super().__init__(name, interval_ms)
+        super().__init__(name, serial_num, interval_ms)
 
         self.initialized = True
 

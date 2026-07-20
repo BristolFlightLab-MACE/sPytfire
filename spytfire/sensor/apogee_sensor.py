@@ -142,10 +142,8 @@ class ApogeeSensorWorker(BasePollingWorker):
             same ADS1115
         """
         
-        # Pass shared variables to BaseWorker
-        super().__init__(name, interval_ms)
-
-        self.serial_num = serial_num
+        # Pass shared variables to BasePollingWorker
+        super().__init__(name, serial_num, interval_ms)
 
         try:
             # Create the I2C bus
@@ -157,6 +155,12 @@ class ApogeeSensorWorker(BasePollingWorker):
                     
                 case 'Pygeo_Down':
                     address = 72  # GND
+
+                case 'Pyro_Up':
+                    address = 73  # VIN
+
+                case 'Pyro_Down':
+                    address = 73  # VIN
                     
                 case 'Pyronometer':
                     address = 73  # VIN
@@ -184,7 +188,7 @@ class ApogeeSensorWorker(BasePollingWorker):
             # Create differential input between channel 2 and 3
             self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
             
-        elif address == 73 and type(self.serial_num) == list:
+        elif address == 73 and self.name == 'Pyronometer':
             # Create differential input between channel 0 and 1
             self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
             
@@ -201,7 +205,14 @@ class ApogeeSensorWorker(BasePollingWorker):
         try:
             if self.name == "Pygeo_Up" or self.name == "Pygeo_Down":
                 
-                v0, v1 = self.chan0.voltage,self.chan1.voltage
+                _ = self.chan0.voltage      # throw away stale conversion
+                time.sleep(0.01)
+                v0 = self.chan0.voltage
+                
+                # Read channel 1
+                _ = self.chan1.voltage
+                time.sleep(0.01)
+                v1 = self.chan1.voltage
                 
                 excitation_v = 3.2827
                 
@@ -227,7 +238,7 @@ class ApogeeSensorWorker(BasePollingWorker):
                 
                 self.data_ready.emit(self.name, sensor_type, apogee_dict)
             
-            elif self.name == 'Pyronometer' and type(self.serial_num) == list:
+            elif self.name == 'Pyronometer':
                 
                 _ = self.chan0.voltage      # throw away stale conversion
                 time.sleep(0.01)
@@ -257,6 +268,30 @@ class ApogeeSensorWorker(BasePollingWorker):
                                'timestamp': timestamp
                               }
                 self.data_ready.emit(self.name, 'apogee_sd', apogee_dict)
+        
+            else:
+                _ = self.chan0.voltage      # throw away stale conversion
+                time.sleep(0.01)
+                v = self.chan0.voltage
+
+                k = find_coefficients(self.serial_num)
+
+                shortwave = calc_shortwave(k, v)
+
+                timestamp = self.timestamp()
+
+                apogee_dict = {'voltage': v0,
+                'radiative_flux': shortwave0,
+                'timestamp': timestamp
+                }
+
+                if self.name == 'Pyro_Up':
+                    data_type = 'apogee_su'
+
+                elif self.name == 'Pyro_Down':
+                    data_type = 'apogee_sd'
+                
+                self.data_ready.emit(self.name, data_type, apogee_dict)
             
         except Exception as e:
             print(f"Apogee Read Error: {e}")

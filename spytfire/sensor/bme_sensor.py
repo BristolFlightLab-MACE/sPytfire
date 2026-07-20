@@ -31,7 +31,7 @@ class BMESensorWorker(BasePollingWorker):
     '''Class to read a BME280 and emit the data to the controller.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, interval_ms=200):
+    def __init__(self, name, serial_num = None, interval_ms=200):
         """
         A BasePollingWorker to connect and operate a BME280 environment
         sensor that measures surrounding temperature, pressure and 
@@ -59,8 +59,8 @@ class BMESensorWorker(BasePollingWorker):
             computer timestamp
 
         """     
-        # Pass shared variables to BaseWorker
-        super().__init__(name, interval_ms)
+        # Pass shared variables to BasePollingWorker
+        super().__init__(name, serial_num, interval_ms)
         
         try:
             self.bus = SMBus(1)

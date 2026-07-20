@@ -20,6 +20,8 @@ import yaml
 __version__ = '1.2'
 __fileversion__ = '1.2'
 __author__ = 'Matthew Varnam'
+
+
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
@@ -28,6 +30,7 @@ sensor_config2['Pyro_Up']    = {'serial_num': None, 'type': 'apogee_su', 'interv
 sensor_config2['Pyro_Down']  = {'serial_num': None, 'type': 'apogee_sd', 'interval': 2000}
 sensor_config2['Pygeo_Up']   = {'serial_num': None, 'type': 'apogee_lu', 'interval': 2000}
 sensor_config2['Pygeo_Down'] = {'serial_num': None, 'type': 'apogee_ld', 'interval': 2000}
+sensor_config2['GPS']        = {'serial_num': None, 'type': 'gps'      , 'interval': 2000}
 
 # =========================================================================
 #  Logger to save measured data to files
@@ -274,8 +277,7 @@ class FileLogger(QObject):
     @Slot(str, str, dict)
     def handle_spec(self, name, sensor_type, data_dict):
 
-        sensor_info = self.SENSOR_CONFIG.get(name)
-        fields_config = self.SENSOR_CONFIG[name]['fields']
+        sensor_info = self.SENSOR_CONFIG.get(sensor_type)
 
         self.request_sensor_list()  #TESTING PURPOSES ONLY
 
@@ -288,7 +290,7 @@ class FileLogger(QObject):
         if self.nspec > 99999:
             # Set the timestamp that names each file created
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-            self.SENSOR_CONFIG[name]['output_file'] = sensor_info['file_prefix'] + timestamp
+            self.SENSOR_CONFIG[sensor_type]['output_file'] = sensor_info['file_prefix'] + timestamp
             Path(sensor_info['output_file']).mkdir(parents=True, exist_ok=True)
             self.nspec = 0
 
@@ -356,6 +358,7 @@ class FileLogger(QObject):
 
             # Check that the folder
             for name in self.sensor_list:
+
                 sensor_type = sensor_config2[name]['type']
                 sensor_info = self.SENSOR_CONFIG.get(sensor_type)
 
@@ -367,7 +370,7 @@ class FileLogger(QObject):
                     filename = sensor_info['file_prefix']+ timestamp
 
                     Path(sensor_info['file_prefix']+timestamp).mkdir(parents=True, exist_ok=True)
-                    self.SENSOR_CONFIG[sensor_info]['output_file'] = filename
+                    sensor_info['output_file'] = filename
 
                 else:    
                     filename = sensor_info['file_prefix']+ timestamp
@@ -385,16 +388,18 @@ class FileLogger(QObject):
                     
                     output_file.write(full_header_line + '\n')
                     
-                    self.SENSOR_CONFIG[sensor_info] = output_file
+                    sensor_info[sensor_type] = output_file
 
             print(f"[*] Started recording at {timestamp}")
             
         else:
             # --- STOP RECORDING: Close Current File ---
-            for name in all_keys:
-                if name != '7616940SP' and self.SENSOR_CONFIG[name]['output_file'] is not None:
-                    self.SENSOR_CONFIG[name]['output_file'].close()
-                    self.SENSOR_CONFIG[name]['output_file'] = None
+            for name in self.sensor_list:
+                sensor_type = sensor_config2[name]['type']
+                sensor_info = self.SENSOR_CONFIG.get(sensor_type)
+                if name != 'UV_Spec' and sensor_info['output_file'] is not None:
+                    sensor_info['output_file'].close()
+                    sensor_info['output_file'] = None
                                 
                 print("[!] Recording stopped and file closed at {timestamp}.")
             
@@ -402,7 +407,9 @@ class FileLogger(QObject):
         all_keys = list(self.SENSOR_CONFIG.keys())
         
         # --- STOP RECORDING: Close Current File ---
-        for name in all_keys:
-            if name != '7616940SP' and self.SENSOR_CONFIG[name]['output_file'] is not None:
-                self.SENSOR_CONFIG[name]['output_file'].close()
-                self.SENSOR_CONFIG[name]['output_file'] = None
+        for name in self.sensor_list:
+            sensor_type = sensor_config2[name]['type']
+            sensor_info = self.SENSOR_CONFIG.get(sensor_type)
+            if name != 'UV_Spec' and sensor_info['output_file'] is not None:
+                sensor_info['output_file'].close()
+                sensor_info['output_file'] = None

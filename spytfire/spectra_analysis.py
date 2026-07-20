@@ -2,8 +2,8 @@
 Created on Tue July 7 12:22:00 2026
 
 Aim to create a worker that can operate both inside and outside spytfire.py.
-It will receive the filenames of spectra to analyse, then save results to a
-specified directory.
+It will monitor a given directory for the most recent spectra saved, then
+output the SO2 quantity measured alongside pertinent UAS parameters.
 
 First, need to make sure spectra from spectrometer sensor are output into the 
 iFit format
@@ -15,18 +15,20 @@ iFit format
 # Define imports
 # =============================================================================
 
-# Import the basic BaseWorker from the base module to apply to Apogee sensors
-from spytfire.base import BaseWorker
+# Import the basic BasePollingWorker from the base module
+from spytfire.base import BasePollingWorker
+
+from datetime import datetime
 
 # =============================================================================
 # Define the analysis worker and its attributes
 # =============================================================================
 
-class AnalysisWorker(BaseWorker):
-    def __init__(self, name, outfile):
+class AnalysisWorker(BasePollingWorker):
+    def __init__(self, name, serial_num, interval_ms = 1000):
 
-        # Pass shared variables to BaseWorker
-        super().__init__(name)
+        # Pass shared variables to BasePollingWorker
+        super().__init__(name, serial_num, interval_ms)
         self.spectrum = None
 
     def run(self):
@@ -70,15 +72,15 @@ class AnalysisWorker(BaseWorker):
         x, y, metadata, read_err = read_spectrum(fname, spec_type,
                                                     wl_calib_file)
         
-        # Fit the spectrum
+        # Fit the spectrum using iFit
         fit_result = self.analyser.fit_spectrum(
             spectrum=[x, y],
             update_params=update_flag,
-            resid_limit=resid_limit,
-            resid_type=resid_type,
-            sat_limit=sat_limit,
-            int_limit=int_limit,
-            calc_od=graph_p,
+            resid_limit  =resid_limit,
+            resid_type   =resid_type,
+            sat_limit    =sat_limit,
+            int_limit    =int_limit,
+            calc_od      =graph_p,
             interp_method=interp_meth,
-            prefit_shift=prefit_shift
+            prefit_shift =prefit_shift
         )

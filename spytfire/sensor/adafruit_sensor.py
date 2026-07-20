@@ -33,7 +33,7 @@ class AdafruitSensorWorker(BasePollingWorker):
     '''Class to read an Adafruit AS7341 10-channel spectrometer.'''
     data_ready = Signal(str, str, dict)
 
-    def __init__(self, name, interval_ms=1000):
+    def __init__(self, name, serial_num = None, interval_ms=1000):
         """
         A BasePollingWorker to connect and operate the Adafruit7341 
         10-channel spectrometer.
@@ -60,8 +60,8 @@ class AdafruitSensorWorker(BasePollingWorker):
             current timestamp according to the sensor compute
 
         """
-        # Pass shared variables to BaseWorker
-        super().__init__(name, interval_ms)
+        # Pass shared variables to BasePollingWorker
+        super().__init__(name, serial_num, interval_ms)
 
         try:
             # Setup

@@ -179,12 +179,9 @@ class Controller(QObject):
         if sensor_type == 'spec':
             worker = worker_class(name)
 
-        elif sensor_type == 'apogee':
+        else:
             worker = worker_class(name, serial_num, interval_ms = interval)
         
-        else:
-            worker = worker_class(name, interval_ms=interval)
-
         if sensor_type not in SENSOR_MAP:
             print(f"WARNING: Default Worker created for sensor_type '{sensor_type}'")
         
@@ -219,9 +216,12 @@ class Controller(QObject):
         for worker in self.workers:
             if worker.is_initialized and worker.name not in ['MAVLink','UAS_TIME','Pyronometer']:
                 self.curr_workers.append(worker.name)
-            elif worker.is_initialized and worker.name == ['Pyronometer']:
+            elif worker.is_initialized and worker.name == 'Pyronometer':
                 self.curr_workers.append('Pyro_Up')
                 self.curr_workers.append('Pyro_Down')
+            elif worker.is_initialized and worker.name == 'MAVLink':
+                self.curr_workers.append('GPS')
+                
         self.sensor_list.emit(self.curr_workers)
 
     def request_exit(self):
