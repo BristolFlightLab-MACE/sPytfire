@@ -370,7 +370,7 @@ class FileLogger(QObject):
                     filename = sensor_info['file_prefix']+ timestamp
 
                     Path(sensor_info['file_prefix']+timestamp).mkdir(parents=True, exist_ok=True)
-                    sensor_info['output_file'] = filename
+                    self.SENSOR_CONFIG[sensor_type]['output_file'] = filename
 
                 else:    
                     filename = sensor_info['file_prefix']+ timestamp
@@ -388,7 +388,7 @@ class FileLogger(QObject):
                     
                     output_file.write(full_header_line + '\n')
                     
-                    sensor_info[sensor_type] = output_file
+                    self.SENSOR_CONFIG[sensor_type]['output_file'] = output_file
 
             print(f"[*] Started recording at {timestamp}")
             
@@ -404,7 +404,6 @@ class FileLogger(QObject):
                 print("[!] Recording stopped and file closed at {timestamp}.")
             
     def close_file(self):
-        all_keys = list(self.SENSOR_CONFIG.keys())
         
         # --- STOP RECORDING: Close Current File ---
         for name in self.sensor_list:
