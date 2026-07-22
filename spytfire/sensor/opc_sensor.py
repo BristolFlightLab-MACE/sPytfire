@@ -15,11 +15,15 @@ from spytfire.base import BasePollingWorker
 # Import Signal from PySide to allow the workers to send signals
 from PySide6.QtCore import Signal
 
-# Key imports for running alphasense OPC using SPI interface
+# Key imports for running alphasense OPC using USB interface
 from usbiss.spi import SPI
 
-# This module is needed if running alphasense OPC using USB interface
-#import spidev
+try:
+    # This module is needed if running alphasense OPC using SPI interface
+    import spidev
+except ModuleNotFoundError:
+    print("spidev not found: Install if on Linux")
+
 import serial
 
 # Libary for operating alphasense OPC
@@ -67,28 +71,34 @@ class OPCSensorWorker(BasePollingWorker):
         # Pass shared variables to BasePollingWorker
         super().__init__(name, serial_num, interval_ms)
         
+        # Initialise as None to let code check for connection
+        spi = None
+
+        # First, try spi connection
         try:
-            # Two options depending on whether usb or spi connection is used
-            spi = SPI('/dev/ttyACM0')
-            # spi = spidev.SpiDev()
-            # spi.open(0, 0)
-
-            # Return to common code
-            spi.mode = 1
-            spi.max_speed_hz = 500000
-            spi.lsbfirst = False
-
-            self.sensor = opc.detect(spi)
-            self.sensor.on()
-            
+            spi = spidev.SpiDev()
+            spi.open(0, 0)
         except (NameError, ValueError, serial.SerialException) as e:
-            print(f"[{name}] Hardware failure: {e}")
-            
-            if hasattr(self,'sensor'):
-                self.sensor.off()
-            
+            print(f"[{name}] OPC Method 1 failed: {e}")
             return
-        
+
+        if spi == None:
+            try:
+                # Two options depending on whether usb or spi connection is used
+                spi = SPI('/dev/ttyACM0')
+
+            except (NameError, ValueError, serial.SerialException) as e:
+                print(f"[{name}] Hardware failure: {e}")
+                return
+
+        # Return to common code
+        spi.mode = 1
+        spi.max_speed_hz = 500000
+        spi.lsbfirst = False
+
+        self.sensor = opc.detect(spi)
+        self.sensor.on()
+
         # Track hardware error states
         self.consecutive_failures = 0
         self.MAX_ALLOWED_FAILURES = 5  # Shut down after ~5 failed attempts

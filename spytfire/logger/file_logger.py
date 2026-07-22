@@ -315,9 +315,9 @@ class FileLogger(QObject):
                 + f'timestamp; {timestamp}\n' \
                 + f'elecdk_correction; {correct_dark_counts}\n' \
                 + f'nonlin_correction; {correct_nonlinearity}\n' \
-                + f'lat; {self.lat}\n' \
-                + f'lon; {self.lon}\n' \
-                + f'alt; {self.alt}\n' \
+                + f'lat; {self.loc['lat']}\n' \
+                + f'lon; {self.loc['lon']}\n' \
+                + f'alt; {self.loc['alt']}\n' \
                 + 'Wavelength (nm),       Intensity (arb)'
 
         x = data_dict['x']
@@ -339,7 +339,7 @@ class FileLogger(QObject):
     @Slot(list)
     def update_sensor_list(self, sensor_list):
         self.sensor_list = sensor_list
-        print(self.sensor_list)
+        #print(self.sensor_list)
 
     @Slot(bool)
     def set_recording_state(self, state):

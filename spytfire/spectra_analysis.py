@@ -20,6 +20,14 @@ from spytfire.base import BasePollingWorker
 
 from datetime import datetime
 
+try:
+    from ifit.load_spectra import read_spectrum, average_spectra
+    from ifit.spectral_analysis import Analyser
+    from ifit.parameters import Parameters
+
+except ModuleNotFoundError:
+    print('iFit not found - download from University of Manchester github')
+
 # =============================================================================
 # Define the analysis worker and its attributes
 # =============================================================================
@@ -28,8 +36,53 @@ class AnalysisWorker(BasePollingWorker):
     def __init__(self, name, serial_num, interval_ms = 1000):
 
         # Pass shared variables to BasePollingWorker
-        super().__init__(name, serial_num, interval_ms)
+        super().__init__(name, name, serial_num, interval_ms)
+
+        # Create parameter dictionary
+        params = Parameters()
+
+        # Add the gases
+        params.add('SO2',  value=1.0e16, vary=True, xpath='Ref/SO2_295K.txt')
+        params.add('O3',   value=1.0e19, vary=True, xpath='Ref/O3_243K.txt')
+        params.add('Ring', value=0.1,    vary=True, xpath='Ref/Ring.txt')
+
+        # Add background polynomial parameters
+        params.add('bg_poly0', value=0.0, vary=True)
+        params.add('bg_poly1', value=0.0, vary=True)
+        params.add('bg_poly2', value=0.0, vary=True)
+        params.add('bg_poly3', value=1.0, vary=True)
+
+        # Add intensity offset parameters
+        params.add('offset0', value=0.0, vary=False)
+
+        # Add wavelength stretch and shift parameters
+        params.add('shift0', value=0.0, vary=True)
+        params.add('shift1', value=0.1, vary=True)
+
+        # Add ILS parameters
+        params.add('fwem', value=0.6, vary=True)
+        params.add('k',    value=2.0, vary=False)
+        params.add('a_w',  value=0.0, vary=False)
+        params.add('a_k',  value=0.0, vary=False)
+
+        # Initialize an empty spectrum
         self.spectrum = None
+        self.spec_type = 'iFit'
+
+        self.analyser = Analyser(
+            params,
+            fit_window=[310, 320],
+            stray_flag=True,
+            stray_window=[298, 301],
+            dark_flag=True,
+            frs_path='Ref/sao2010.txt'
+        )
+
+        self.update_dark(init_dark_fnames)
+
+    def update_dark(self, dark_fnames):
+        x, dark = average_spectra(dark_fnames, self.spec_type)
+        self.analyser.dark_spec = dark
 
     def run(self):
         try:

@@ -12,3 +12,7 @@ data_logs*/
 sPytfire.code-workspace
 .vscode/
 .venv/
+
+# Exclude iFit folders that can be downloaded seperately from https://github.com/ManchesterVolcanology/iFit
+ifit/
+Ref/
