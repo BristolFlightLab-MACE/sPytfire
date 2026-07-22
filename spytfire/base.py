@@ -25,10 +25,12 @@ class BaseWorker(QObject):
     finished = Signal()
     stop_requested = Signal()
 
-    def __init__(self, name):
+    def __init__(self, name, serial_num = None, interval_ms = None):
         super().__init__()
         self.initialized = False
         self.name = name
+        self.interval_ms = interval_ms
+        self.serial_num = serial_num
         
         # Force QueuedConnection so the stop() slot runs on the worker thread
         self.stop_requested.connect(self.stop_work, type=Qt.QueuedConnection)
@@ -60,10 +62,9 @@ class BaseWorker(QObject):
 class BasePollingWorker(BaseWorker):
     """Handles workers that require a constant heartbeat timer (Sensors)."""
     def __init__(self, name, serial_num = None, interval_ms=100):
-        super().__init__(name)
-        self.interval_ms = interval_ms
+        super().__init__(name, serial_num, interval_ms)
         self.timer = None
-        self.serial_num = serial_num
+
 
     def start_work(self):
         self.timer = QTimer(self)

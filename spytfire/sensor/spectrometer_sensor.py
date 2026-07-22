@@ -41,7 +41,7 @@ class SpecWorker(BaseWorker):
     '''Class to operate an Avaspec spectrometer and emit data to Controller.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name):
+    def __init__(self, name, serial_num = None, interval_ms = None):
         """
         Operates an Avaspec Nexos spectrometer using the
         BaseWorker class. 
@@ -72,7 +72,7 @@ class SpecWorker(BaseWorker):
         """      
                 
         # Pass shared variables to BaseWorker
-        super().__init__(name)
+        super().__init__(name, serial_num, interval_ms)
 
         # Set some global paramters that are used in process()
         self.spectro = None

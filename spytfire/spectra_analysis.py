@@ -3,7 +3,8 @@ Created on Tue July 7 12:22:00 2026
 
 Aim to create a worker that can operate both inside and outside spytfire.py.
 It will monitor a given directory for the most recent spectra saved, then
-output the SO2 quantity measured alongside pertinent UAS parameters.
+output the most recent SO2 quantity measured alongside pertinent 
+UAS parameters.
 
 First, need to make sure spectra from spectrometer sensor are output into the 
 iFit format
@@ -18,7 +19,10 @@ iFit format
 # Import the basic BasePollingWorker from the base module
 from spytfire.base import BasePollingWorker
 
+# datetime for interpreting and formatting the time and date
 from datetime import datetime
+
+import os
 
 try:
     from ifit.load_spectra import read_spectrum, average_spectra
@@ -32,11 +36,41 @@ except ModuleNotFoundError:
 # Define the analysis worker and its attributes
 # =============================================================================
 
+dummy_dir = (r'C:\Users\cx25261\Documents\projects\MACE\coding\iFit\Results')
+
+dummy_dnames = [dummy_dir + file for file in os.listdir(dummy_dir + '/dark')]
+dummy_sname  = dummy_dir + os.listdir(dummy_dir + '/spectra')[-1]
+
 class AnalysisWorker(BasePollingWorker):
     def __init__(self, name, serial_num, interval_ms = 1000):
 
         # Pass shared variables to BasePollingWorker
         super().__init__(name, name, serial_num, interval_ms)
+
+        # Create iFit parameter dictionary
+        self.create_parameters()
+
+        # Initialize an empty spectrum
+        self.spectrum = None
+        self.spec_type = 'iFit'
+
+        # Initialize an analyser class for iFit analysis
+        self.analyser = Analyser(
+            self.params,
+            fit_window=[310, 320],
+            stray_flag=True,
+            stray_window=[298, 301],
+            dark_flag=True,
+            frs_path='Ref/sao2010.txt'
+        )
+
+        self.dark_fnames = dummy_dnames
+        self.update_dark()
+
+        self.save_path = f'/Results.csv'
+        self.create_file()
+
+    def create_parameters(self):
 
         # Create parameter dictionary
         params = Parameters()
@@ -65,24 +99,53 @@ class AnalysisWorker(BasePollingWorker):
         params.add('a_w',  value=0.0, vary=False)
         params.add('a_k',  value=0.0, vary=False)
 
-        # Initialize an empty spectrum
-        self.spectrum = None
-        self.spec_type = 'iFit'
-
-        self.analyser = Analyser(
-            params,
-            fit_window=[310, 320],
-            stray_flag=True,
-            stray_window=[298, 301],
-            dark_flag=True,
-            frs_path='Ref/sao2010.txt'
-        )
-
-        self.update_dark(init_dark_fnames)
-
+        self.params = params
+        
     def update_dark(self, dark_fnames):
         x, dark = average_spectra(dark_fnames, self.spec_type)
         self.analyser.dark_spec = dark
+
+    def create_file(self):
+
+        # Write the analysis metaddata
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        with open(self.save_path, 'w') as w:
+            w.write('# iFit output file\n'
+                    + f'# Analysis Time,{timestamp}\n'
+                    + f'# Fit Window Low,{self.analyser.init_fit_window[0]}\n'
+                    + f'# Fit Window High,{self.analyser.init_fit_window[1]}\n'
+                    + f'# Flat corr.,{self.analyser.flat_flag}\n'
+                    + f'# Dark corr.,{self.analyser.dark_flag}\n'
+                    + f'# Stray corr.,{self.analyser.stray_flag}\n')
+
+            # Make a list of column names
+            pre_cols = [['outp_lat', 'Lat'],
+                        ['outp_lon', 'Lon'],
+                        ['outp_alt', 'Alt']]
+            post_cols = [['outp_intlo', 'int_lo'],
+                        ['outp_inthi', 'int_hi'],
+                        ['outp_intav', 'int_av'],
+                        ['outp_resmax', 'max_resid'],
+                        ['outp_resstd', 'std_resid'],
+                        ['outp_fitqual', 'fit_quality']]
+
+            # Add pre columns
+            cols = ['File', 'Number', 'Time']
+            [cols.append(name) for [key, name] in pre_cols
+                 if False]
+
+            # Add analysis parameter columns
+            for par in self.analyser.params:
+                cols += [par, f'{par}_err']
+
+            # Add post columns
+            [cols.append(name) for [key, name] in post_cols
+                if False]
+
+            w.write(cols[0])
+            [w.write(f',{c}') for c in cols[1:]]
+            w.write('\n')
 
     def run(self):
         try:
@@ -92,48 +155,27 @@ class AnalysisWorker(BasePollingWorker):
 
     def _run(self):
 
-        # Pull analysis parameters
-
-        # Open Save file
-
-        # Write the analysis metaddata
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        w.write('# iFit output file\n'
-                + f'# Analysis Time,{timestamp}\n'
-                + f'# Fit Window Low,{self.widgetData["fit_lo"]}\n'
-                + f'# Fit Window High,{self.widgetData["fit_hi"]}\n'
-                + f'# Flat corr.,{self.widgetData["flat_flag"]}\n'
-                + f'# Dark corr.,{self.widgetData["dark_flag"]}\n'
-                + f'# Stray corr.,{self.widgetData["stray_flag"]}\n')
-
-        # Make a list of column names
-        pre_cols = [['outp_lat', 'Lat'],
-                    ['outp_lon', 'Lon'],
-                    ['outp_alt', 'Alt']]
-        post_cols = [['outp_intlo', 'int_lo'],
-                    ['outp_inthi', 'int_hi'],
-                    ['outp_intav', 'int_av'],
-                    ['outp_resmax', 'max_resid'],
-                    ['outp_resstd', 'std_resid'],
-                    ['outp_fitqual', 'fit_quality']]
-
-        # Add pre columns
-        cols = ['File', 'Number', 'Time']
-
         # Read in the spectrum
-        fname = spec_fnames[loop]
-        x, y, metadata, read_err = read_spectrum(fname, spec_type,
-                                                    wl_calib_file)
+        fname = dummy_sname
+        x, y, metadata, read_err = read_spectrum(fname, self.spec_type,
+                                                    wl_calib_file = None)
         
         # Fit the spectrum using iFit
         fit_result = self.analyser.fit_spectrum(
-            spectrum=[x, y],
-            update_params=update_flag,
-            resid_limit  =resid_limit,
-            resid_type   =resid_type,
-            sat_limit    =sat_limit,
-            int_limit    =int_limit,
-            calc_od      =graph_p,
-            interp_method=interp_meth,
-            prefit_shift =prefit_shift
+            spectrum=[x, y]
         )
+
+        #,
+        #    update_params=update_flag,
+        #    resid_limit  =resid_limit,
+        #    resid_type   =resid_type,
+        #    sat_limit    =sat_limit,
+        #    int_limit    =int_limit,
+        #    calc_od      =graph_p,
+        #    interp_method=interp_meth,
+        #    prefit_shift =prefit_shift
+        #)
+
+if __name__ == '__main__':
+    analysis = AnalysisWorker
+    analysis.run()

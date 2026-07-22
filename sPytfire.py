@@ -71,18 +71,15 @@ SENSOR_TYPE_TO_WORKER = {
     'spec'      : SpecWorker,
 }
 
-# Build SENSOR_TYPES and SENSOR_MAP from config file
-SENSOR_TYPES = [
-    (name, sensor_config['serial_num'], sensor_config['type']) 
+# Build a combined sensor info mapping from config file
+SENSOR_INFO = {
+    name: {
+        'serial_num': sensor_config['serial_num'],
+        'type': sensor_config['type'],
+        'worker_class': SENSOR_TYPE_TO_WORKER.get(sensor_config['type'], SensorWorker),
+        'interval': sensor_config.get('interval', 1000),
+    }
     for name, sensor_config in config.get('sensors', {}).items()
-]
-
-SENSOR_MAP = {
-    sensor_config['type']: (
-        SENSOR_TYPE_TO_WORKER.get(sensor_config['type'], SensorWorker),
-        sensor_config.get('interval', 1000)
-    )
-    for sensor_config in config.get('sensors', {}).values()
 }
 
 # =========================================================================
@@ -108,8 +105,14 @@ class Controller(QObject):
             self._add_uas_time()
 
         # Setup Sensors
-        for name, serial_num, sensor_type in SENSOR_TYPES:
-            self.add_sensor(name, serial_num, sensor_type=sensor_type)
+        for name, info in SENSOR_INFO.items():
+            self.add_sensor(
+                name,
+                info['serial_num'],
+                sensor_type=info['type'],
+                worker_class=info['worker_class'],
+                interval=info['interval'],
+            )
 
         self._connect_handlers()
         self.setup_complete.emit()
@@ -171,19 +174,15 @@ class Controller(QObject):
         self.workers.append(self.uas_worker)
         thread.start()
     
-    def add_sensor(self, name, serial_num, sensor_type = 'default'):
+    def add_sensor(self, name, serial_num, worker_class, sensor_type='default', interval=1000):
 
         # Retrieve the class and interval, falling back to defaults
-        worker_class, interval = SENSOR_MAP.get(sensor_type, (SensorWorker, 1000))
+        worker_class = worker_class
 
-        if sensor_type == 'spec':
-            worker = worker_class(name)
-
-        else:
-            worker = worker_class(name, serial_num, interval_ms = interval)
-        
-        if sensor_type not in SENSOR_MAP:
+        if worker_class is SensorWorker:
             print(f"WARNING: Default Worker created for sensor_type '{sensor_type}'")
+
+        worker = worker_class(name, serial_num, interval_ms=interval)
         
         # Check that the worker has been created, and if not, skip the thread handoff
         if not worker.is_initialized:
@@ -254,9 +253,7 @@ class Controller(QObject):
         QCoreApplication.instance().quit()
 
 # ---------------- Main ----------------
-
-if __name__ == "__main__":
-        
+def main():        
     # =========================================================================
     # Create PySide Application
     # =========================================================================
@@ -277,3 +274,6 @@ if __name__ == "__main__":
     pysignal.signal(pysignal.SIGINT, lambda sig, frame: (exit_timer.stop(), controller.request_exit()))
 
     sys.exit(app.exec())
+
+if __name__ == "__main__":
+    main()
