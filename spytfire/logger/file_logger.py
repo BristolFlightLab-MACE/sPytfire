@@ -56,7 +56,6 @@ class FileLogger(QObject):
 
             'ada_as7341': {
                 'file_prefix': f'{prefix}ada/',
-                'output_file': None,
                 'fields': {
                     'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'channel_415'   : {'fmt':'.0f', 'header': '415 Channel'},
@@ -75,7 +74,6 @@ class FileLogger(QObject):
             
             'pim_bme280': {
                 'file_prefix': f'{prefix}bme/',
-                'output_file': None,
                 'fields': {
                     'timestamp'  : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'temperature': {'fmt':'.2f', 'header': 'Temperature (°C)'},
@@ -86,7 +84,6 @@ class FileLogger(QObject):
 
             'gps'       : {
                 'file_prefix': f'{prefix}gps/',
-                'output_file': None,
                 'fields': {
                     'timestamp'  : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'lat'        : {'fmt':'.6f', 'header': 'Latitude (deg)'},
@@ -97,7 +94,6 @@ class FileLogger(QObject):
             
             'spn1'      : {
                 'file_prefix': f'{prefix}spn1/', 
-                'output_file': None,
                 'fields': {
                     'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'total'         : {'fmt':'.1f', 'header': 'Total (W/m2)'},
@@ -109,7 +105,6 @@ class FileLogger(QObject):
             
             'apogee_lu': {
                 'file_prefix': f'{prefix}apogeeLU/',
-                'output_file': None,
                 'fields': {
                     'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'radiative_flux': {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
@@ -122,7 +117,6 @@ class FileLogger(QObject):
             
             'apogee_ld': {
                 'file_prefix': f'{prefix}apogeeLD/',
-                'output_file': None,
                 'fields': {
                     'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'radiative_flux': {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
@@ -135,7 +129,6 @@ class FileLogger(QObject):
             
             'apogee_su': {
                 'file_prefix': f'{prefix}apogeeSU/',
-                'output_file': None,
                 'fields': {
                     'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'radiative_flux' : {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
@@ -145,7 +138,6 @@ class FileLogger(QObject):
             
             'apogee_sd': {
                 'file_prefix': f'{prefix}apogeeSD/',
-                'output_file': None,
                 'fields': {
                     'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'radiative_flux' : {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
@@ -155,7 +147,6 @@ class FileLogger(QObject):
 
             'spec': {
                 'file_prefix': f'{prefix}spec/',
-                'output_file': None,
                 'fields': {
                     'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'y'              : {'fmt':'.1f', 'header': 'Counts'}
@@ -164,7 +155,6 @@ class FileLogger(QObject):
             
             'opc': {
                 'file_prefix': f'{prefix}opc/',
-                'output_file': None,
                 'fields': {
                     'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     
@@ -190,14 +180,26 @@ class FileLogger(QObject):
             
             'voltage':{
                 'file_prefix':f'{prefix}voltage/',
-                'output_file': None,
                 'fields': {
                     'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'excite_v'      : {'fmt':'.6f', 'header': 'Excitation Voltage (V)' }
+                    'excite_v'      : {'fmt':'.6f', 'header': 'Excitation Voltage (V)'}
+                    }
+                },
+
+            'gas':{
+                'file_prefix':f'{prefix}gas/',
+                'fields': {
+                    'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'mvolt'         : {'fmt':'.2f', 'header': 'Sensor Voltage (V)'},
+                    'conc'          : {'fmt':'.1f', 'header': 'Gas Concentration (ppb)'}
                     }
                 }
             }
-        
+
+        # Initialise empty names as output filepaths for each sensor
+        for key in self.SENSOR_CONFIG.keys():
+            self.SENSOR_CONFIG[key]['output_file'] = None
+
         self.current_uas_time = "00:00:00.000000"
         self.recording_active = False
 

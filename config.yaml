@@ -44,4 +44,8 @@ sensors:
   I2C_V:
     serial_num: null
     type: voltage
-    interval: 500
+    
+  CO2:
+    serial_num: null
+    type: alpha_gas
+    interval: 1000

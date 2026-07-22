@@ -33,13 +33,15 @@ connection_str = "/dev/serial0"
 from PySide6.QtCore import QObject, QThread, Slot, QTimer, QCoreApplication, Qt, Signal, QEventLoop
 
 # Load custom modules containing the workers for each sensor/connection
+from spytfire.sensor.adafruit_sensor import AdafruitSensorWorker
 from spytfire.sensor.apogee_sensor import ApogeeSensorWorker
 from spytfire.sensor.bme_sensor import BMESensorWorker
-from spytfire.sensor.adafruit_sensor import AdafruitSensorWorker
+from spytfire.sensor.gas_sensor import GasSensorWorker
 from spytfire.sensor.opc_sensor import OPCSensorWorker
 from spytfire.sensor.spectrometer_sensor import SpecWorker
 from spytfire.sensor.spn1_sensor import SPN1SensorWorker
 from spytfire.sensor.voltage_sensor import VoltageSensorWorker
+
 from spytfire.mavlink import MavlinkWorker
 from spytfire.base import SensorWorker, UASWorker
 from spytfire.logger.console_logger import ConsoleLogger
@@ -69,6 +71,7 @@ SENSOR_TYPE_TO_WORKER = {
     'voltage'   : VoltageSensorWorker,
     'alpha_opc' : OPCSensorWorker,
     'spec'      : SpecWorker,
+    'alpha_gas' : GasSensorWorker
 }
 
 # Build a combined sensor info mapping from config file
