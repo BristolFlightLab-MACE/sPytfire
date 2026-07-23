@@ -16,8 +16,8 @@ iFit format
 # Define imports
 # =============================================================================
 
-# Import the basic BasePollingWorker from the base module
-from spytfire.base import BasePollingWorker
+# Import Signal from PySide to allow the workers to send signals
+from PySide6.QtCore import QObject, Slot
 
 # datetime for interpreting and formatting the time and date
 from datetime import datetime
@@ -41,11 +41,11 @@ dummy_dir = (r'C:\Users\cx25261\Documents\projects\MACE\coding\iFit\Results')
 dummy_dnames = [dummy_dir + file for file in os.listdir(dummy_dir + '/dark')]
 dummy_sname  = dummy_dir + os.listdir(dummy_dir + '/spectra')[-1]
 
-class AnalysisWorker(BasePollingWorker):
-    def __init__(self, name, serial_num, interval_ms = 1000):
+class AnalysisWorker(QObject):
+    def __init__(self, parent):
 
         # Pass shared variables to BasePollingWorker
-        super().__init__(name, name, serial_num, interval_ms)
+        super().__init__(parent)
 
         # Create iFit parameter dictionary
         self.create_parameters()
@@ -70,7 +70,7 @@ class AnalysisWorker(BasePollingWorker):
         self.save_path = f'/Results.csv'
         self.create_file()
 
-    def create_parameters(self):
+    def _create_parameters(self):
 
         # Create parameter dictionary
         params = Parameters()
@@ -147,13 +147,18 @@ class AnalysisWorker(BasePollingWorker):
             [w.write(f',{c}') for c in cols[1:]]
             w.write('\n')
 
-    def run(self):
+    @Slot
+    def handle_spec(self, name, sensor_type, data_dict):
+
+        # If analysis code not already running then:
+
         try:
-            self._run()
+            self.analyse_spectrum()
+
         except Exception as e:
             self._safe_shutdown(reason=e)
 
-    def _run(self):
+    def analyse_spectrum(self):
 
         # Read in the spectrum
         fname = dummy_sname
@@ -175,7 +180,3 @@ class AnalysisWorker(BasePollingWorker):
         #    interp_method=interp_meth,
         #    prefit_shift =prefit_shift
         #)
-
-if __name__ == '__main__':
-    analysis = AnalysisWorker
-    analysis.run()

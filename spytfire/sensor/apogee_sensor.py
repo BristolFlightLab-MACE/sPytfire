@@ -280,8 +280,8 @@ class ApogeeSensorWorker(BasePollingWorker):
 
                 timestamp = self.timestamp()
 
-                apogee_dict = {'voltage': v0,
-                'radiative_flux': shortwave0,
+                apogee_dict = {'voltage': v,
+                'radiative_flux': shortwave,
                 'timestamp': timestamp
                 }
 

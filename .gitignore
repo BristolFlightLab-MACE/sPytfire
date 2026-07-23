@@ -16,3 +16,7 @@ sPytfire.code-workspace
 # Exclude iFit folders that can be downloaded seperately from https://github.com/ManchesterVolcanology/iFit
 ifit/
 Ref/
+
+# Exclude testing scripts
+test.py
+*dummy_spectrometer_sensor.py
