@@ -153,7 +153,7 @@ class FileLogger(QObject):
                     }
                 },
             
-            'opc': {
+            'alpha_opc': {
                 'file_prefix': f'{prefix}opc/',
                 'fields': {
                     'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
@@ -364,6 +364,7 @@ class FileLogger(QObject):
                 sensor_type = sensor_config2[name]['type']
                 sensor_info = self.SENSOR_CONFIG.get(sensor_type)
 
+                print(name)
                 # Search for the directory and create the folder if it does not exist
                 Path(sensor_info['file_prefix']).mkdir(parents=True, exist_ok=True)
                 

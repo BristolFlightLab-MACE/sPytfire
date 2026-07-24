@@ -124,7 +124,7 @@ class OPCSensorWorker(BasePollingWorker):
             channels['laser_status'] = values['Laser status']
             channels['timestamp'] = self.timestamp()
             
-            self.data_ready.emit(self.name, 'opc', channels)
+            self.data_ready.emit(self.name, 'alpha_opc', channels)
             self.consecutive_failures = 0
         
         except (KeyError, ValueError) as data_err:

@@ -14,7 +14,7 @@ from spytfire.base import BaseWorker
 # avaspec.py is provided by Avantes and is used to control the spectrometer
 # avaspecx64.dll is also require for Windows, or libavs_0.9.14.0_arm64.deb for 
 # ARM-powered Linux (e.g., Raspberry Pi).
-import spytfire.sensor.avaspec as av_error
+import spytfire.sensor.avaspec as av
 import spytfire.sensor.av_error as av_error
 
 # Import pyside6 to create the process for reading data in to an application
@@ -81,7 +81,7 @@ class SpecWorker(BaseWorker):
         self.nr_scanned = 0
 
         try:
-            ret = av_error.AVS_Init(-1)
+            ret = av.AVS_Init(-1)
             if ret < 0:
                 error_message = av_error.get_av_error_message(ret)
                 print(f"[{self.name}] Spectrometer initialization failed with error code {ret}: {error_message}")
@@ -93,24 +93,24 @@ class SpecWorker(BaseWorker):
                 self._safe_shutdown(reason = f"Multiple spectrometers detected. Currently no support for this scenario. Detected {ret} devices.")
                 return
             
-            ret = av_error.AVS_UpdateUSBDevices()
+            ret = av.AVS_UpdateUSBDevices()
             if ret == 0:
                 print(f"[{self.name}] No spectrometer devices found. Please check the connection and try again.")
                 return
 
-            mylist = av_error.AvsIdentityType * 1
-            mylist = av_error.AVS_GetList(1)
+            mylist = av.AvsIdentityType * 1
+            mylist = av.AVS_GetList(1)
 
             self.serial_number = str(mylist[0].SerialNumber.decode("utf-8"))
 
-            self.spectro = av_error.AVS_Activate(mylist[0])
+            self.spectro = av.AVS_Activate(mylist[0])
             if isinstance(self.spectro, (int, float)) and self.spectro < 0:
                 error_message = av_error.get_av_error_message(self.spectro)
                 self._safe_shutdown(reason = f"Failed to activate the spectrometer with code {self.spectro}: {error_message}).")
                 return
 
-            devcon = av_error.DeviceConfigType()
-            devcon = av_error.AVS_GetParameter(self.spectro, 63484)
+            devcon = av.DeviceConfigType()
+            devcon = av.AVS_GetParameter(self.spectro, 63484)
 
             if isinstance(devcon, (int, float)) and devcon < 0:
                 error_message = av_error.get_av_error_message(devcon)
@@ -123,7 +123,7 @@ class SpecWorker(BaseWorker):
 
             self.get_wavelengths()
 
-            ret = av_error.AVS_UseHighResAdc(self.spectro, True)
+            ret = av.AVS_UseHighResAdc(self.spectro, True)
 
             if isinstance(ret, (int, float)) and ret < 0:
                 error_message = av_error.get_av_error_message(ret)
@@ -140,7 +140,7 @@ class SpecWorker(BaseWorker):
             print(f"[{name}] Hardware failure: {e}")
 
     def set_config(self):
-            self.measconfig = av_error.MeasConfigType()
+            self.measconfig = av.MeasConfigType()
             self.measconfig.m_StartPixel = 0
             self.measconfig.m_StopPixel = self.pixels - 1
             self.measconfig.m_IntegrationTime = float(100.0)
@@ -163,7 +163,7 @@ class SpecWorker(BaseWorker):
     def get_wavelengths(self):
         """Get the wavelengths from the spectrometer and update the number of pixels."""
 
-        x = np.array(av_error.AVS_GetLambda(self.spectro))
+        x = np.array(av.AVS_GetLambda(self.spectro))
 
         if isinstance(x, (int, float)) and x < 0:
             error_message = av_error.get_av_error_message(x)
@@ -187,7 +187,7 @@ class SpecWorker(BaseWorker):
         # Create an empty array to hold the spectra data
         y_arr = np.zeros([self.pixels])
         
-        ret = av_error.AVS_PrepareMeasure(self.spectro, self.measconfig)
+        ret = av.AVS_PrepareMeasure(self.spectro, self.measconfig)
 
         if isinstance(ret, (int, float)) and ret < 0:
                 error_message = av_error.get_av_error_message(ret)
@@ -195,10 +195,10 @@ class SpecWorker(BaseWorker):
                 return
         
         # Create a Callback function to determine when the measurement is completed.
-        self.avs_cb = av_error.AVS_MeasureCallbackFunc(self.measure_cb)
+        self.avs_cb = av.AVS_MeasureCallbackFunc(self.measure_cb)
         
         # Call the callback function to start the measurement and wait for it to complete.
-        ret = av_error.AVS_MeasureCallback(self.spectro, self.avs_cb, int(1))
+        ret = av.AVS_MeasureCallback(self.spectro, self.avs_cb, int(1))
 
         if isinstance(ret, (int, float)) and ret < 0:
             error_message = av_error.get_av_error_message(ret)
@@ -215,7 +215,7 @@ class SpecWorker(BaseWorker):
         self.nr_scanned = 0
     
         # Copy date from the spectrometer onto the computer
-        ret = av_error.AVS_GetScopeData(self.spectro)
+        ret = av.AVS_GetScopeData(self.spectro)
 
         if isinstance(ret, (int, float)) and ret < 0:
             error_message = av_error.get_av_error_message(ret)
@@ -265,6 +265,6 @@ class SpecWorker(BaseWorker):
             print(f"Reason: {reason}")
 
         # Disconnect from spectrometer if issue occurs. Should work regardless of issue.
-        av_error.AVS_Done()
+        av.AVS_Done()
             
         self.initialized = False
