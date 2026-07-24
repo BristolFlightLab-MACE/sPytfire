@@ -36,6 +36,11 @@ sensors:
     type: spec
     interval: null
 
+  Fake_Spec:
+    serial_num: null
+    type: spec_fake
+    interval: null
+
   OPC:
     serial_num: null
     type: alpha_opc

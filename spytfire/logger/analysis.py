@@ -41,14 +41,12 @@ dummy_dir = (r'C:\Users\cx25261\Documents\projects\MACE\coding\iFit\Results')
 dummy_dnames = [dummy_dir + file for file in os.listdir(dummy_dir + '/dark')]
 dummy_sname  = dummy_dir + os.listdir(dummy_dir + '/spectra')[-1]
 
-class AnalysisWorker(QObject):
-    def __init__(self, parent):
-
-        # Pass shared variables to BasePollingWorker
+class AnalysisLogger(QObject):
+    def __init__(self, parent=None):
         super().__init__(parent)
 
         # Create iFit parameter dictionary
-        self.create_parameters()
+        self._create_parameters()
 
         # Initialize an empty spectrum
         self.spectrum = None
@@ -65,7 +63,7 @@ class AnalysisWorker(QObject):
         )
 
         self.dark_fnames = dummy_dnames
-        self.update_dark()
+        self.update_dark(dummy_dnames)
 
         self.save_path = f'/Results.csv'
         self.create_file()
@@ -147,19 +145,21 @@ class AnalysisWorker(QObject):
             [w.write(f',{c}') for c in cols[1:]]
             w.write('\n')
 
-    @Slot
+    @Slot(str, str, dict)
     def handle_spec(self, name, sensor_type, data_dict):
 
         # If analysis code not already running then:
-
         try:
             self.analyse_spectrum()
+            print(name)
 
         except Exception as e:
             self._safe_shutdown(reason=e)
 
     def analyse_spectrum(self):
+        pass
 
+        '''
         # Read in the spectrum
         fname = dummy_sname
         x, y, metadata, read_err = read_spectrum(fname, self.spec_type,
@@ -180,3 +180,4 @@ class AnalysisWorker(QObject):
         #    interp_method=interp_meth,
         #    prefit_shift =prefit_shift
         #)
+        '''

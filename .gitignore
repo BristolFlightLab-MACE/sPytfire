@@ -19,4 +19,4 @@ Ref/
 
 # Exclude testing scripts
 test.py
-*dummy_spectrometer_sensor.py
+*dummy_spectrometer.py

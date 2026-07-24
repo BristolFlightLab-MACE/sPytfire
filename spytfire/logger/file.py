@@ -11,7 +11,7 @@ import numpy as np
 from pathlib import Path
 import os
 
-from spytfire.sensor.apogee_sensor import calc_longwave, find_coefficients
+from spytfire.sensor.apogee import calc_longwave, find_coefficients
 
 from datetime import datetime, timezone
 

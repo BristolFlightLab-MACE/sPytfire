@@ -151,19 +151,19 @@ class ApogeeSensorWorker(BasePollingWorker):
             
             match self.name:
                 case 'Pygeo_Up':
-                    address = 75  # SCL
+                    address = 0x4B  # SCL
                     
                 case 'Pygeo_Down':
-                    address = 72  # GND
+                    address = 0x48  # GND
 
                 case 'Pyro_Up':
-                    address = 73  # VIN
+                    address = 0x49  # VIN
 
                 case 'Pyro_Down':
-                    address = 73  # VIN
+                    address = 0x49  # VIN
                     
                 case 'Pyronometer':
-                    address = 73  # VIN
+                    address = 0x49  # VIN
                     
                 case _:
                     raise ValueError('apogee sensor not yet supported')  
@@ -181,21 +181,21 @@ class ApogeeSensorWorker(BasePollingWorker):
                     pass
             return
 
-        if address == 75 or address == 72:
+        if address == 0x4B or address == 0x48:
             # Create differential input between channel 0 and 1
             self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
             
             # Create differential input between channel 2 and 3
             self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
             
-        elif address == 73 and self.name == 'Pyronometer':
+        elif address == 0x49 and self.name == 'Pyronometer':
             # Create differential input between channel 0 and 1
             self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
             
             # Create differential input between channel 2 and 3
             self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
 
-        elif address == 73:
+        elif address == 0x49:
             # Create single differential input between channel 0 and 1
             self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
 
