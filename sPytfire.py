@@ -45,8 +45,10 @@ from spytfire.sensor.dummy_spectrometer import DummySpecWorker
 
 from spytfire.mavlink import MavlinkWorker
 from spytfire.base import SensorWorker, UASWorker
+
 from spytfire.logger.console import ConsoleLogger
 from spytfire.logger.file import FileLogger
+from spytfire.logger.analysis import AnalysisLogger
 
 # Load other libraries
 from pathlib import Path
@@ -131,6 +133,11 @@ class Controller(QObject):
             if hasattr(handler, "confirm_setup_complete"):
                 self.setup_complete.connect(handler.confirm_setup_complete)
 
+            if hasattr(handler, "data_ready"):
+                for handler2 in self.handlers:
+                    if hasattr(handler2, "handle_data"):
+                        handler.data_ready.connect(handler2.handle_data)
+
     def _add_mavlink(self, conn_str, rc_channel):
         # Create the worker
         self.mav_worker = MavlinkWorker(conn_str,channel_num = rc_channel)
@@ -149,7 +156,8 @@ class Controller(QObject):
                 self.mav_worker.recording_trigger.connect(handler.set_recording_state)
         
         for handler in self.handlers:
-            self.mav_worker.data_ready.connect(handler.handle_data)
+            if hasattr(handler, "handle_data"):
+                self.mav_worker.data_ready.connect(handler.handle_data)
           
         self.threads.append(thread)
         self.workers.append(self.mav_worker)
@@ -218,14 +226,21 @@ class Controller(QObject):
     def monitor_workers(self):
         self.curr_workers = []
         for worker in self.workers:
-            if worker.is_initialized and worker.name not in ['MAVLink','UAS_TIME','Pyronometer']:
-                self.curr_workers.append(worker.name)
-            elif worker.is_initialized and worker.name == 'Pyronometer':
-                self.curr_workers.append('Pyro_Up')
-                self.curr_workers.append('Pyro_Down')
-            elif worker.is_initialized and worker.name == 'MAVLink':
-                self.curr_workers.append('GPS')
-                
+            if worker.is_initialized:
+                match worker.name:
+                    case 'MAVLink':
+                        self.curr_workers.append('GPS')
+                    case 'UAS_TIME':
+                        pass
+                    case 'Pyronometer':
+                        self.curr_workers.append('Pyro_Up')
+                        self.curr_workers.append('Pyro_Down')
+                    case 'UV_Spec':
+                        self.curr_workers.append('UV_Spec')
+                        self.curr_workers.append('SO2')
+                    case _:
+                        self.curr_workers.append(worker.name)
+
         self.sensor_list.emit(self.curr_workers)
 
     def request_exit(self):
@@ -273,7 +288,10 @@ def main():
     # Setup logging and controller components
     console_logger = ConsoleLogger()
     file_logger = FileLogger()
-    controller = Controller([console_logger, file_logger], connection_str, on_off_channel)
+    analysis_logger = AnalysisLogger()
+    controller = Controller([console_logger, file_logger, analysis_logger],
+                             connection_str,
+                             on_off_channel)
 
     # Hook Ctrl+C
     pysignal.signal(pysignal.SIGINT, lambda sig, frame: (exit_timer.stop(), controller.request_exit()))

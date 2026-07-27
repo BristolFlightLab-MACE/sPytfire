@@ -1,13 +1,8 @@
 """
 Created on Tue July 7 12:22:00 2026
 
-Aim to create a worker that can operate both inside and outside spytfire.py.
-It will monitor a given directory for the most recent spectra saved, then
-output the most recent SO2 quantity measured alongside pertinent 
-UAS parameters.
-
-First, need to make sure spectra from spectrometer sensor are output into the 
-iFit format
+There are architectural issues with having analysis as a Logger. It needs to be 
+moved back to a worker to avoid potential freezing of the main thread.
 
 @author: Matt Varnam
 @email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
@@ -17,12 +12,16 @@ iFit format
 # =============================================================================
 
 # Import Signal from PySide to allow the workers to send signals
-from PySide6.QtCore import QObject, Slot
+from PySide6.QtCore import QObject, Slot, Signal
 
 # datetime for interpreting and formatting the time and date
 from datetime import datetime
 
+# Load other libraries
+from pathlib import Path
 import os
+import time
+import numpy as np
 
 try:
     from ifit.load_spectra import read_spectrum, average_spectra
@@ -38,10 +37,11 @@ except ModuleNotFoundError:
 
 dummy_dir = (r'C:\Users\cx25261\Documents\projects\MACE\coding\iFit\Results')
 
-dummy_dnames = [dummy_dir + file for file in os.listdir(dummy_dir + '/dark')]
-dummy_sname  = dummy_dir + os.listdir(dummy_dir + '/spectra')[-1]
+dummy_dnames = [dummy_dir + '/dark/' + file for file in os.listdir(dummy_dir + '/dark')]
 
 class AnalysisLogger(QObject):
+    data_ready = Signal(str, str, dict)
+
     def __init__(self, parent=None):
         super().__init__(parent)
 
@@ -62,11 +62,16 @@ class AnalysisLogger(QObject):
             frs_path='Ref/sao2010.txt'
         )
 
+        self.resid_limit = 6
+        self.int_limit = [0,65000]
+        self.calc_od_key = ['O3']
+
         self.dark_fnames = dummy_dnames
         self.update_dark(dummy_dnames)
 
-        self.save_path = f'/Results.csv'
-        self.create_file()
+        # Create toggle to prevent multiple fitting iterations running at the 
+        # same time
+        self.running = False
 
     def _create_parameters(self):
 
@@ -100,84 +105,100 @@ class AnalysisLogger(QObject):
         self.params = params
         
     def update_dark(self, dark_fnames):
+
         x, dark = average_spectra(dark_fnames, self.spec_type)
         self.analyser.dark_spec = dark
 
-    def create_file(self):
-
-        # Write the analysis metaddata
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        with open(self.save_path, 'w') as w:
-            w.write('# iFit output file\n'
-                    + f'# Analysis Time,{timestamp}\n'
-                    + f'# Fit Window Low,{self.analyser.init_fit_window[0]}\n'
-                    + f'# Fit Window High,{self.analyser.init_fit_window[1]}\n'
-                    + f'# Flat corr.,{self.analyser.flat_flag}\n'
-                    + f'# Dark corr.,{self.analyser.dark_flag}\n'
-                    + f'# Stray corr.,{self.analyser.stray_flag}\n')
-
-            # Make a list of column names
-            pre_cols = [['outp_lat', 'Lat'],
-                        ['outp_lon', 'Lon'],
-                        ['outp_alt', 'Alt']]
-            post_cols = [['outp_intlo', 'int_lo'],
-                        ['outp_inthi', 'int_hi'],
-                        ['outp_intav', 'int_av'],
-                        ['outp_resmax', 'max_resid'],
-                        ['outp_resstd', 'std_resid'],
-                        ['outp_fitqual', 'fit_quality']]
-
-            # Add pre columns
-            cols = ['File', 'Number', 'Time']
-            [cols.append(name) for [key, name] in pre_cols
-                 if False]
-
-            # Add analysis parameter columns
-            for par in self.analyser.params:
-                cols += [par, f'{par}_err']
-
-            # Add post columns
-            [cols.append(name) for [key, name] in post_cols
-                if False]
-
-            w.write(cols[0])
-            [w.write(f',{c}') for c in cols[1:]]
-            w.write('\n')
+    def timestamp(self):
+        """Returns the current time in nanoseconds from the connected."""
+        return time.monotonic_ns()
 
     @Slot(str, str, dict)
     def handle_spec(self, name, sensor_type, data_dict):
 
+        print(self.running)
+
+        if self.running:
+            return
+
+        self.running = True
+
         # If analysis code not already running then:
         try:
+            self.data_dict = data_dict
             self.analyse_spectrum()
-            print(name)
 
         except Exception as e:
-            self._safe_shutdown(reason=e)
+            print(f'Error during analysis: {e}')
+
+        finally:
+            self.running = False
 
     def analyse_spectrum(self):
-        pass
 
-        '''
-        # Read in the spectrum
-        fname = dummy_sname
-        x, y, metadata, read_err = read_spectrum(fname, self.spec_type,
-                                                    wl_calib_file = None)
-        
+        wav  = self.data_dict['x']
+        self.spec = self.data_dict['y']
+                
         # Fit the spectrum using iFit
         fit_result = self.analyser.fit_spectrum(
-            spectrum=[x, y]
+            spectrum = [wav, self.spec],
+            resid_limit = self.resid_limit, int_limit = self.int_limit,
+            calc_od=['SO2']
         )
 
-        #,
-        #    update_params=update_flag,
-        #    resid_limit  =resid_limit,
-        #    resid_type   =resid_type,
-        #    sat_limit    =sat_limit,
-        #    int_limit    =int_limit,
-        #    calc_od      =graph_p,
-        #    interp_method=interp_meth,
-        #    prefit_shift =prefit_shift
-        #)
-        '''
+        self.nerr = fit_result.nerr
+
+        self.check_output(fit_result)
+
+        out_params = {}
+        key_list = [key for key in self.params if self.params[key].vary]
+
+        for i,key in enumerate(key_list):
+
+            #Only keep SO2 for now
+            if key in ['SO2','O3']:
+                out_params[key] = fit_result.popt[i]
+
+        data_output = {'timestamp': self.timestamp(),
+                       'so2': out_params['SO2'],
+                       'o3' : out_params['O3']
+        }
+        self.data_ready.emit('iFit', 'so2', data_output)
+
+    def check_output(self,fit_result):
+
+        if self.nerr:
+            # Check the fit quality
+            if self.resid_limit is not None and max(abs(fit_result.resid)) > self.resid_limit:
+                print('High residual detected')
+
+            # Check for spectrum light levels
+            if self.int_limit is not None:
+
+                # Check for low intensity
+                if min(self.spec) <= self.int_limit[0]:
+                    print('Low intensity detected')
+
+                # Check for high intensity
+                elif max(self.spec) >= self.int_limit[1]:
+                    print('High intensity detected')
+
+            # Calculate optical depth spectra
+            for par in self.calc_od_key:
+                if par in self.params:
+                    meas_od, synth_od = fit_result.calc_od(par, self.analyser)
+                    # Check for nans in OD
+                    if np.isnan(meas_od).any() or np.isnan(synth_od).any():
+                        print('Bad optical depth detected')
+
+        # If not then return nans
+        else:
+            print('Fit failed!')
+            self.fit = np.full(len(self.spec), np.nan)
+            fit_result.resid = np.full(len(self.spec), np.nan)
+            self.resid_max = np.nan
+            self.resid_std = np.nan
+            for par in self.calc_od_key:
+                if par in self.params:
+                    self.meas_od[par] = np.full(len(self.spec), np.nan)
+                    self.synth_od[par] = np.full(len(self.spec), np.nan)

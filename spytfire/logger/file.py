@@ -31,6 +31,7 @@ sensor_config2['Pyro_Down']  = {'serial_num': None, 'type': 'apogee_sd', 'interv
 sensor_config2['Pygeo_Up']   = {'serial_num': None, 'type': 'apogee_lu', 'interval': 2000}
 sensor_config2['Pygeo_Down'] = {'serial_num': None, 'type': 'apogee_ld', 'interval': 2000}
 sensor_config2['GPS']        = {'serial_num': None, 'type': 'gps'      , 'interval': 2000}
+sensor_config2['SO2']        = {'serial_num': None, 'type': 'so2'      , 'interval': 2000}
 
 # =========================================================================
 #  Logger to save measured data to files
@@ -192,6 +193,15 @@ class FileLogger(QObject):
                     'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'mvolt'         : {'fmt':'.2f', 'header': 'Sensor Voltage (V)'},
                     'conc'          : {'fmt':'.1f', 'header': 'Gas Concentration (ppb)'}
+                    }
+                },
+
+            'so2':{
+                'file_prefix':f'{prefix}so2/',
+                'fields': {
+                    'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'so2'           : {'fmt':'.2E', 'header': 'SO2 Column (molecules/cm2)'},
+                    'o3'            : {'fmt':'.2E', 'header': 'O3 Column (molecules/cm2)'}
                     }
                 }
             }

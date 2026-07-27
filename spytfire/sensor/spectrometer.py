@@ -1,6 +1,8 @@
 """
 Created on Tue Mar 31 11:39:00 2026
 
+Need to implement an automatic dark acquisition
+
 @author: Matt Varnam
 @email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
 """
@@ -133,6 +135,8 @@ class SpecWorker(BaseWorker):
             # Avaspec recommend directly setting device configuration values
             self.set_config()
 
+            self.acquire_darks()
+
             self.initialized = True
 
         except ConnectionError as e:
@@ -159,6 +163,9 @@ class SpecWorker(BaseWorker):
             self.measconfig.m_Control_m_LaserWidth = 0
             self.measconfig.m_Control_m_LaserWaveLength = 0.0
             self.measconfig.m_Control_m_StoreToRam = 0
+
+    def acquire_darks(self):
+        pass
 
     def get_wavelengths(self):
         """Get the wavelengths from the spectrometer and update the number of pixels."""
