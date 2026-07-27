@@ -146,6 +146,8 @@ class ApogeeSensorWorker(BasePollingWorker):
         super().__init__(name, serial_num, interval_ms)
 
         try:
+            ### ED TO EDIT I2C BUS HERE TO INSERT DUPLEXER LOGIC
+
             # Create the I2C bus
             i2c = board.I2C()
             

@@ -67,6 +67,7 @@ class GasSensorWorker(BasePollingWorker):
         super().__init__(name, serial_num, interval_ms)
 
         try:
+            ### ED TO EDIT I2C BUS HERE TO INSERT DUPLEXER LOGIC
             # Create the I2C bus
             i2c = board.I2C()
             
@@ -91,6 +92,7 @@ class GasSensorWorker(BasePollingWorker):
         self.initialized = True
 
     def process(self):
+        ### CODE HERE SHOULD BE ADAPTED TO CO2 OR HCL SENSOR
         _ = self.channel.voltage
         time.sleep(0.01)
         mvolt = self.channel.voltage * 1000
