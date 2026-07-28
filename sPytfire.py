@@ -48,7 +48,7 @@ from spytfire.base import SensorWorker, UASWorker
 
 from spytfire.logger.console import ConsoleLogger
 from spytfire.logger.file import FileLogger
-from spytfire.logger.analysis import AnalysisLogger
+from spytfire.analysis.so2 import SO2Analysis
 
 # Load other libraries
 from pathlib import Path
@@ -83,6 +83,7 @@ SENSOR_INFO = {
     name: {
         'serial_num': sensor_config['serial_num'],
         'type': sensor_config['type'],
+        'address':sensor_config['address'],
         'worker_class': SENSOR_TYPE_TO_WORKER.get(sensor_config['type'], SensorWorker),
         'interval': sensor_config.get('interval', 1000),
     }
@@ -116,9 +117,10 @@ class Controller(QObject):
             self.add_sensor(
                 name,
                 info['serial_num'],
-                sensor_type=info['type'],
+                sensor_type =info['type'],
+                address     =info['address'],
                 worker_class=info['worker_class'],
-                interval=info['interval'],
+                interval    =info['interval']
             )
 
         self._connect_handlers()
@@ -187,7 +189,7 @@ class Controller(QObject):
         self.workers.append(self.uas_worker)
         thread.start()
     
-    def add_sensor(self, name, serial_num, worker_class, sensor_type='default', interval=1000):
+    def add_sensor(self, name, serial_num, address, worker_class, sensor_type='default', interval=1000):
 
         # Retrieve the class and interval, falling back to defaults
         worker_class = worker_class
@@ -195,7 +197,7 @@ class Controller(QObject):
         if worker_class is SensorWorker:
             print(f"WARNING: Default Worker created for sensor_type '{sensor_type}'")
 
-        worker = worker_class(name, serial_num, interval_ms=interval)
+        worker = worker_class(name, serial_num, address, interval_ms=interval)
         
         # Check that the worker has been created, and if not, skip the thread handoff
         if not worker.is_initialized:
@@ -221,6 +223,10 @@ class Controller(QObject):
         self.workers.append(worker)
         
         thread.start()
+
+    def add_so2_analysis(self):
+        worker = SO2Analysis()
+        
 
     @Slot()
     def monitor_workers(self):
@@ -288,8 +294,7 @@ def main():
     # Setup logging and controller components
     console_logger = ConsoleLogger()
     file_logger = FileLogger()
-    analysis_logger = AnalysisLogger()
-    controller = Controller([console_logger, file_logger, analysis_logger],
+    controller = Controller([console_logger, file_logger],
                              connection_str,
                              on_off_channel)
 

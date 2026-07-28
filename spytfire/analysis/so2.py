@@ -39,12 +39,13 @@ dummy_dir = (r'C:\Users\cx25261\Documents\projects\MACE\coding\iFit\Results')
 
 dummy_dnames = [dummy_dir + '/dark/' + file for file in os.listdir(dummy_dir + '/dark')]
 
-class AnalysisLogger(QObject):
+class SO2Analysis(QObject):
     data_ready = Signal(str, str, dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        self.initialised = False
         # Create iFit parameter dictionary
         self._create_parameters()
 
@@ -72,6 +73,17 @@ class AnalysisLogger(QObject):
         # Create toggle to prevent multiple fitting iterations running at the 
         # same time
         self.running = False
+        self.initialised = True
+
+    @property
+    def is_initialized(self):
+        """Safe read-only access for the main thread."""
+        return self.initialized
+
+    @property
+    def is_running(self):
+        """Safe read-only access for the main thread."""
+        return self.running
 
     def _create_parameters(self):
 

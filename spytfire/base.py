@@ -25,7 +25,7 @@ class BaseWorker(QObject):
     finished = Signal()
     stop_requested = Signal()
 
-    def __init__(self, name, serial_num = None, interval_ms = None):
+    def __init__(self, name, serial_num = None, address = None, interval_ms = None):
         super().__init__()
         self.initialized = False
         self.name = name
@@ -61,8 +61,8 @@ class BaseWorker(QObject):
 
 class BasePollingWorker(BaseWorker):
     """Handles workers that require a constant heartbeat timer (Sensors)."""
-    def __init__(self, name, serial_num = None, interval_ms=100):
-        super().__init__(name, serial_num, interval_ms)
+    def __init__(self, name, serial_num = None, address = None, interval_ms=100):
+        super().__init__(name, serial_num, address, interval_ms)
         self.timer = None
 
 
@@ -85,7 +85,7 @@ class BasePollingWorker(BaseWorker):
 class SensorWorker(BasePollingWorker):
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, interval_ms=100):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=100):
         """
         Simulate a completed BasePollingWorker to demonstrate how a sensor
         worker can interface with the base class.

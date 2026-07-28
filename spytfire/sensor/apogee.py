@@ -107,7 +107,7 @@ class ApogeeSensorWorker(BasePollingWorker):
     '''Class to read an ADS1115 and interpret the voltages as Apogee signals.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num, interval_ms=200):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200):
 
         """
         A BasePollingWorker to connect and operate either 1 or 2
@@ -143,33 +143,14 @@ class ApogeeSensorWorker(BasePollingWorker):
         """
         
         # Pass shared variables to BasePollingWorker
-        super().__init__(name, serial_num, interval_ms)
+        super().__init__(name, serial_num, address, interval_ms)
 
         try:
             ### ED TO EDIT I2C BUS HERE TO INSERT DUPLEXER LOGIC
 
             # Create the I2C bus
             i2c = board.I2C()
-            
-            match self.name:
-                case 'Pygeo_Up':
-                    address = 0x4B  # SCL
-                    
-                case 'Pygeo_Down':
-                    address = 0x48  # GND
-
-                case 'Pyro_Up':
-                    address = 0x49  # VIN
-
-                case 'Pyro_Down':
-                    address = 0x49  # VIN
-                    
-                case 'Pyronometer':
-                    address = 0x49  # VIN
-                    
-                case _:
-                    raise ValueError('apogee sensor not yet supported')  
-            
+                        
             # Create the ADC object using the I2C bus
             self.sensor = ADS1115(i2c,address = address)
             

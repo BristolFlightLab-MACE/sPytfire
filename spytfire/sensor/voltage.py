@@ -34,7 +34,7 @@ class VoltageSensorWorker(BasePollingWorker):
     '''Class to read the excitation voltage from the ADC and emit it to the controller.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, interval_ms=200):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200):
         """
         A BasePollingWorker that replicates the structure of
         apogee_sensor.py to use an adafruit ADS1115 to measure the 
@@ -64,15 +64,13 @@ class VoltageSensorWorker(BasePollingWorker):
         """   
         
         # Pass shared variables to BasePollingWorker
-        super().__init__(name, serial_num, interval_ms)
+        super().__init__(name, serial_num, address, interval_ms)
         
         try:
             ### ED TO EDIT I2C BUS HERE TO INSERT DUPLEXER LOGIC
             
             # Create the I2C bus
             i2c = board.I2C()
-            
-            address = 74
             
             # Create the ADC object using the I2C bus
             self.ads = ADS1115(i2c,address = address)

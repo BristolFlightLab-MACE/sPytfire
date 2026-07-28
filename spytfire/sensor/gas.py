@@ -38,7 +38,7 @@ from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
 class GasSensorWorker(BasePollingWorker):
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, interval_ms=100):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=100):
         """
         Simulate a completed BasePollingWorker to demonstrate how a sensor
         worker can interface with the base class.
@@ -64,7 +64,7 @@ class GasSensorWorker(BasePollingWorker):
 
         """   
         # Pass shared variables to BaseWorker
-        super().__init__(name, serial_num, interval_ms)
+        super().__init__(name, serial_num, address, interval_ms)
 
         try:
             ### ED TO EDIT I2C BUS HERE TO INSERT DUPLEXER LOGIC

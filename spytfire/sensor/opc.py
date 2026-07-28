@@ -39,7 +39,7 @@ class OPCSensorWorker(BasePollingWorker):
     '''Class to read the alphasense OPC-N3 and emit it to the controller.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, interval_ms=200):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200):
         """
         A BasePollingWorker to connect and operate an alphasense OPC-N3
         optical particle counter to measure the size distribution of 
@@ -69,7 +69,7 @@ class OPCSensorWorker(BasePollingWorker):
         """   
         
         # Pass shared variables to BasePollingWorker
-        super().__init__(name, serial_num, interval_ms)
+        super().__init__(name, serial_num, address, interval_ms)
         
         # Initialise as None to let code check for connection
         spi = None

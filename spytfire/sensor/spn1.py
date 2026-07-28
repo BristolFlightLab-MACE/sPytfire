@@ -36,7 +36,7 @@ class SPN1SensorWorker(BasePollingWorker):
     '''Class to read the Delta-T SPN1 and emit it to the controller.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, interval_ms=200):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200):
         """
         A BasePollingWorker to connect and operate a delta-T SPN1
         sunshine pyronometer to measure the total and diffuse solar 
@@ -66,7 +66,7 @@ class SPN1SensorWorker(BasePollingWorker):
         """   
         
         # Pass shared variables to BasePollingWorker
-        super().__init__(name, serial_num, interval_ms)
+        super().__init__(name, serial_num, address, interval_ms)
         
         #PORT = 'COM5'                        # port when connected to my laptop
         PORT = "/dev/ttyUSB0"                 # port when connected to pi  
