@@ -30,6 +30,7 @@ except NotImplementedError:
     print("Hardware not detected. Running in Simulation Mode.")
 
 from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
+import adafruit_tca9548a 
 
 # =============================================================================
 # Create new SensorWorker for controlling alphasense gas sensors
@@ -71,13 +72,14 @@ class GasSensorWorker(BasePollingWorker):
             # Create the I2C bus
             i2c = board.I2C()
             
-            address = 0x48
-            address = 0x49
+            channel, i2caddress = address
 
+            mux = adafruit_tca9548a.PCA9546A(i2c)
+            
             # Create the ADC object using the I2C bus
-            self.sensor = ADS1115(i2c, address = address)
+            self.sensor = ADS1115(mux[channel], address = i2caddress)
 
-            self.channel = AnalogIn(self.channel, 0, 1)
+            self.chan = AnalogIn(self.chan, 0, 1)
 
         except (NameError, ValueError, OSError, AttributeError) as e:
             print(f"[{self.name}] Hardware failure: {e}")
@@ -93,9 +95,9 @@ class GasSensorWorker(BasePollingWorker):
 
     def process(self):
         ### CODE HERE SHOULD BE ADAPTED TO CO2 OR HCL SENSOR
-        _ = self.channel.voltage
+        _ = self.chan.voltage
         time.sleep(0.01)
-        mvolt = self.channel.voltage * 1000
+        mvolt = self.chan.voltage * 1000
 
         conc = (mvolt + self.zeroAE - self.zeroWE)/self.sens
 

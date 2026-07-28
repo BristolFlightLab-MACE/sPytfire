@@ -4,31 +4,31 @@ sensors:
   AdaFruit:
     serial_num: null
     type: ada_as7341
-    address: None
+    address: [1,0x39]
     interval: 2000
 
   BME280:
     serial_num: null
     type: pim_bme280
-    address: None
+    address: [1,0x76]
     interval: 500
 
   Pygeo_Up:
     serial_num: SL510_1729
     type: apogee
-    address: 0x4B
+    address: [1,0x4B]
     interval: 1000
   
   Pygeo_Down:
     serial_num: SL610_1463
     type: apogee
-    address: 0x48
+    address: [1,0x48]
     interval: 1000
 
   Pyronometer:
     serial_num: [SP510_3985, SP610_1707]
     type: apogee
-    address: 0x49
+    address: [1,0x49]
     interval: 1000
 
   Sunshine_Pyro:
@@ -40,7 +40,7 @@ sensors:
   UV_Spec:
     serial_num: null
     type: spec
-    address: 0x4A
+    address: None
     interval: null
 
   #Fake_Spec:
@@ -58,11 +58,11 @@ sensors:
   I2C_V:
     serial_num: null
     type: voltage
-    address: None
+    address: [1,0x4A]
     interval: 1000
     
   #CO2:
   #  serial_num: null
   #  type: alpha_gas
-  #  address: None
+  #  address: [2,0x48]
   #  interval: 1000

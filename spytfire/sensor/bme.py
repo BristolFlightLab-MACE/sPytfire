@@ -64,6 +64,11 @@ class BMESensorWorker(BasePollingWorker):
         
         try:
             self.bus = SMBus(1)
+
+            self.channel, i2caddress = address
+
+            self.bus.write_byte(0x70, 1 << self.channel) # 1 << channel means send a single on bit to the right position
+
             self.sensor = BME280(i2c_dev=self.bus)
             self.sensor.update_sensor() 
             
@@ -79,6 +84,8 @@ class BMESensorWorker(BasePollingWorker):
         
     def process(self):
         try:
+            ### CURRENT SETUP VULNERABLE TO RACE CONDITIONS
+            self.bus.write_byte(0x70, 1 << 1) # to ensure the multiplexer channel line is open for the bme280
             self.sensor.update_sensor() 
             
             bme_dict = {'temperature': self.sensor.temperature,

@@ -25,6 +25,7 @@ except NotImplementedError:
     print("Hardware not detected. Running in Simulation Mode.")
     
 from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
+import adafruit_tca9548a
 
 # =============================================================================
 # Create new SensorWorker for the internal voltage ADS1115
@@ -67,13 +68,15 @@ class VoltageSensorWorker(BasePollingWorker):
         super().__init__(name, serial_num, address, interval_ms)
         
         try:
-            ### ED TO EDIT I2C BUS HERE TO INSERT DUPLEXER LOGIC
-            
+            channel, i2caddress = address
+
             # Create the I2C bus
             i2c = board.I2C()
+
+            mux = adafruit_tca9548a.PCA9546A(i2c)
             
             # Create the ADC object using the I2C bus
-            self.ads = ADS1115(i2c,address = address)
+            self.ads = ADS1115(mux[channel],address = i2caddress)
         
         except (NameError, ValueError, OSError, AttributeError) as e:
             print(f"[{name}] Hardware failure: {e}")

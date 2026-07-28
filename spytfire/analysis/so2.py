@@ -45,7 +45,7 @@ class SO2Analysis(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        self.initialised = False
+        self.initialized = False
         # Create iFit parameter dictionary
         self._create_parameters()
 
@@ -73,7 +73,7 @@ class SO2Analysis(QObject):
         # Create toggle to prevent multiple fitting iterations running at the 
         # same time
         self.running = False
-        self.initialised = True
+        self.initialized = True
 
     @property
     def is_initialized(self):
@@ -125,8 +125,8 @@ class SO2Analysis(QObject):
         """Returns the current time in nanoseconds from the connected."""
         return time.monotonic_ns()
 
-    @Slot(str, str, dict)
-    def handle_spec(self, name, sensor_type, data_dict):
+    @Slot(dict)
+    def analyse_spec(self, data_dict):
 
         self.running = True
 
@@ -209,7 +209,6 @@ class SO2Analysis(QObject):
                 if par in self.params:
                     self.meas_od[par] = np.full(len(self.spec), np.nan)
                     self.synth_od[par] = np.full(len(self.spec), np.nan)
-
 
     def _safe_shutdown(self,reason="Unknown Error"):   
         if reason != ("User Interrupt (Ctrl+C)"):

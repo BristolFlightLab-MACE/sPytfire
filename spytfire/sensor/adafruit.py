@@ -19,6 +19,7 @@ except NotImplementedError:
     print("Hardware not detected. Running in Simulation Mode.")
 
 from adafruit_as7341 import AS7341, Gain
+import adafruit_tca9548a 
 
 # Import Signal from PySide to allow the workers to send signals
 from PySide6.QtCore import Signal
@@ -66,8 +67,11 @@ class AdafruitSensorWorker(BasePollingWorker):
         try:
             # Setup
             i2c = board.I2C() # uses board.SCL and board.SDA
-            # i2c = board.STEMMA_I2C()  # For using the built-in STEMMA QT connector on a microcontroller
-            self.sensor = AS7341(i2c)
+
+            channel, i2caddress = address
+
+            mux = adafruit_tca9548a.PCA9546A(i2c)
+            self.sensor = AS7341(mux[channel])
             
             self.sensor.gain = Gain.GAIN_0_5X
             

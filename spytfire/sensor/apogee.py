@@ -31,6 +31,7 @@ except NotImplementedError:
     print("Hardware not detected. Running in Simulation Mode.")
 
 from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
+import adafruit_tca9548a 
 
 def find_coefficients(serial_num):
 
@@ -150,10 +151,14 @@ class ApogeeSensorWorker(BasePollingWorker):
 
             # Create the I2C bus
             i2c = board.I2C()
-                        
-            # Create the ADC object using the I2C bus
-            self.sensor = ADS1115(i2c,address = address)
+
+            channel, i2caddress = address
+
+            mux = adafruit_tca9548a.PCA9546A(i2c)
             
+            # Create the ADC object using the I2C bus
+            self.sensor = ADS1115(mux[channel],address = i2caddress)
+
         except (NameError, ValueError, OSError, AttributeError) as e:
             print(f"[{self.name}] Hardware failure: {e}")
             
@@ -164,23 +169,26 @@ class ApogeeSensorWorker(BasePollingWorker):
                     pass
             return
 
-        if address == 0x4B or address == 0x48:
+        if self.name == 'Pygeo_Up' or self.name == 'Pygeo_Down':
             # Create differential input between channel 0 and 1
             self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
             
             # Create differential input between channel 2 and 3
             self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
             
-        elif address == 0x49 and self.name == 'Pyronometer':
+        elif self.name == 'Pyronometer':
             # Create differential input between channel 0 and 1
             self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
             
             # Create differential input between channel 2 and 3
             self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
 
-        elif address == 0x49:
+        elif self.name == 'Pyro_Up' or self.name == 'Pyro_Down':
             # Create single differential input between channel 0 and 1
             self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
+
+        else:
+            print('Apogee Instrument Name Unknown - Fix Config')
 
         self.initialized = True
     

@@ -273,7 +273,7 @@ class FileLogger(QObject):
         
         # Save the data by opening file and constructing string
         if output_file and not output_file.closed:
-            line = f"{self.current_uas_time}"
+            line = f"{self.current_uas_time}" + ", "
             
             values_list = []
 

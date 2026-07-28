@@ -48,7 +48,7 @@ from spytfire.base import SensorWorker, UASWorker
 
 from spytfire.logger.console import ConsoleLogger
 from spytfire.logger.file import FileLogger
-from spytfire.analysis.so2 import SO2Analysis
+from spytfire.logger.analysis import AnalysisLogger
 
 # Load other libraries
 from pathlib import Path
@@ -98,7 +98,6 @@ class Controller(QObject):
     """Setup all emitters and handles while launching each sensor."""
     setup_complete = Signal()
     sensor_list = Signal(list)
-    analysis_allowed = Signal(bool)
 
     def __init__(self, handlers, conn_str, rc_channel):
         super().__init__()
@@ -106,6 +105,7 @@ class Controller(QObject):
         self.threads = []
         self.workers = []
 
+        self._connect_analysis()
         # Setup MAVLINK
         self._add_mavlink(conn_str, rc_channel)
 
@@ -220,46 +220,12 @@ class Controller(QObject):
         
         thread.start()
 
-    def add_so2_analysis(self):
-        worker = SO2Analysis()
-
-        # Check that the worker has been created, and if not, skip the thread handoff
-        if not worker.is_initialized:
-
-            # Ensure cleanup of any partial objects
-            worker.deleteLater() 
-            return # Exit the function so no thread is started
-
-        # Configure QThreads
-        thread = QThread()
-        worker.moveToThread(thread)
-        
-        thread.finished.connect(worker.deleteLater)
-        
+    def _connect_analysis(self):
         for handler in self.handlers:
-            worker.data_ready.connect(handler.handle_data)
-
-        for otherworker in self.workers:
-            if hasattr(otherworker, "acquire_darks"):
-                otherworker.data_ready.connect(worker.handle_spec)
-
-        
-        self.threads.append(thread)
-        self.workers.append(worker)
-        
-        thread.start()
-
-    @Slot()
-    def monitor_analysis(self):
-        for worker in self.workers:
-            if hasattr(worker, "analyse_spectrum"):
-                logic = worker.is_running
-
-        if logic:
-            self.analysis_allowed.emit(False)
-        else:
-            self.analysis_allowed.emit(True)
-
+            if hasattr(handler, "add_so2_analysis"):
+                for handler2 in self.handlers:
+                    if hasattr(handler2, "handle_data"):
+                        handler.worker.data_ready.connect(handler2.handle_data)
 
     @Slot()
     def monitor_workers(self):
@@ -299,9 +265,10 @@ class Controller(QObject):
             except RuntimeError:
                 pass
             
-        # Tell threads to stop their event loops
+        # Tell threads to stop their event loops and wait for them to exit
         for thread in self.threads:
             thread.quit()
+            thread.wait(1000)
             
         # Cleanup FileLogger and Console Logger handlers 
         for handler in self.handlers:
@@ -327,7 +294,8 @@ def main():
     # Setup logging and controller components
     console_logger = ConsoleLogger()
     file_logger = FileLogger()
-    controller = Controller([console_logger, file_logger],
+    analysis_logger = AnalysisLogger()
+    controller = Controller([console_logger, file_logger, analysis_logger],
                              connection_str,
                              on_off_channel)
 
