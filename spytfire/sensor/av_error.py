@@ -2,7 +2,7 @@
 Created on Mon Jul 06 15:58:00 2026
 
 @author: Matt Varnam
-@email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
+@email: matt(dot)varnam
 """
 # =============================================================================
 # Define a function to return the error message of each Avaspec error code

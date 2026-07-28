@@ -9,7 +9,7 @@ conda install -c conda-forge numpy scipy tqdm pandas pyyaml pyserial utm pyside6
 pip install pyqtdarktheme
 
 @author: Matt Varnam
-@email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
+@email: matt(dot)varnam
 
 """
 
@@ -98,6 +98,7 @@ class Controller(QObject):
     """Setup all emitters and handles while launching each sensor."""
     setup_complete = Signal()
     sensor_list = Signal(list)
+    analysis_allowed = Signal(bool)
 
     def __init__(self, handlers, conn_str, rc_channel):
         super().__init__()
@@ -134,11 +135,6 @@ class Controller(QObject):
 
             if hasattr(handler, "confirm_setup_complete"):
                 self.setup_complete.connect(handler.confirm_setup_complete)
-
-            if hasattr(handler, "data_ready"):
-                for handler2 in self.handlers:
-                    if hasattr(handler2, "handle_data"):
-                        handler.data_ready.connect(handler2.handle_data)
 
     def _add_mavlink(self, conn_str, rc_channel):
         # Create the worker
@@ -226,7 +222,44 @@ class Controller(QObject):
 
     def add_so2_analysis(self):
         worker = SO2Analysis()
+
+        # Check that the worker has been created, and if not, skip the thread handoff
+        if not worker.is_initialized:
+
+            # Ensure cleanup of any partial objects
+            worker.deleteLater() 
+            return # Exit the function so no thread is started
+
+        # Configure QThreads
+        thread = QThread()
+        worker.moveToThread(thread)
         
+        thread.finished.connect(worker.deleteLater)
+        
+        for handler in self.handlers:
+            worker.data_ready.connect(handler.handle_data)
+
+        for otherworker in self.workers:
+            if hasattr(otherworker, "acquire_darks"):
+                otherworker.data_ready.connect(worker.handle_spec)
+
+        
+        self.threads.append(thread)
+        self.workers.append(worker)
+        
+        thread.start()
+
+    @Slot()
+    def monitor_analysis(self):
+        for worker in self.workers:
+            if hasattr(worker, "analyse_spectrum"):
+                logic = worker.is_running
+
+        if logic:
+            self.analysis_allowed.emit(False)
+        else:
+            self.analysis_allowed.emit(True)
+
 
     @Slot()
     def monitor_workers(self):

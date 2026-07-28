@@ -4,7 +4,7 @@ Created on Tue Mar 31 11:39:00 2026
 Need to implement an automatic dark acquisition
 
 @author: Matt Varnam
-@email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
+@email: matt(dot)varnam
 """
 # =============================================================================
 # Define imports

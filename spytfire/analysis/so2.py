@@ -128,11 +128,6 @@ class SO2Analysis(QObject):
     @Slot(str, str, dict)
     def handle_spec(self, name, sensor_type, data_dict):
 
-        print(self.running)
-
-        if self.running:
-            return
-
         self.running = True
 
         # If analysis code not already running then:
@@ -214,3 +209,11 @@ class SO2Analysis(QObject):
                 if par in self.params:
                     self.meas_od[par] = np.full(len(self.spec), np.nan)
                     self.synth_od[par] = np.full(len(self.spec), np.nan)
+
+
+    def _safe_shutdown(self,reason="Unknown Error"):   
+        if reason != ("User Interrupt (Ctrl+C)"):
+            print(f"\n[CRITICAL ERROR] Initiating Safe Shutdown for {self.name}!")
+            print(f"Reason: {reason}")
+        
+        self.initialized = False

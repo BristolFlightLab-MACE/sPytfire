@@ -6,7 +6,7 @@ This module codes the operation of the voltage sensor for the analogue apogee
 sensors. It's structure is very similar to the analogue apogee sensor structure
 
 @author: Matt Varnam
-@email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
+@email: matt(dot)varnam
 """
 # =============================================================================
 # Define imports

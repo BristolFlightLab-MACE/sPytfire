@@ -3,7 +3,7 @@
 Created on Tue May 26 20:22:47 2026
 
 @author: Matt Varnam
-@email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
+@email: matt(dot)varnam
 """
 # =============================================================================
 # Define imports

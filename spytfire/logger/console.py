@@ -2,7 +2,7 @@
 Created on Tue Mar 31 12:04:52 2026
 
 @author: Matt Varnam
-@email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
+@email: matt(dot)varnam
 """
 # Import Signal from PySide to allow the workers to send signals
 from PySide6.QtCore import QObject, Slot

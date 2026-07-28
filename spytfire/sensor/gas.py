@@ -5,7 +5,7 @@ This module codes the operation of the Apogee SL-510 and SL-610 thermopile
 pygeometers and SP-510 and SP-610 pyronometers
 
 @author: Matt Varnam
-@email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
+@email: matt(dot)varnam
 """
 # =============================================================================
 # Define imports
