@@ -32,6 +32,7 @@ sensor_config2['Pygeo_Up']   = {'serial_num': None, 'type': 'apogee_lu', 'interv
 sensor_config2['Pygeo_Down'] = {'serial_num': None, 'type': 'apogee_ld', 'interval': 2000}
 sensor_config2['GPS']        = {'serial_num': None, 'type': 'gps'      , 'interval': 2000}
 sensor_config2['SO2']        = {'serial_num': None, 'type': 'so2'      , 'interval': 2000}
+sensor_config2['Dark_Spec']  = {'serial_num': None, 'type': 'dark'     , 'interval': 2000}
 
 # =========================================================================
 #  Logger to save measured data to files
@@ -150,6 +151,16 @@ class FileLogger(QObject):
                 'file_prefix': f'{prefix}spec/',
                 'fields': {
                     'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'x'              : {'fmt':'.1f', 'header': 'Counts'},
+                    'y'              : {'fmt':'.1f', 'header': 'Counts'}
+                    }
+                },
+
+            'dark': {
+                'file_prefix': f'{prefix}spec/',
+                'fields': {
+                    'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'x'              : {'fmt':'.1f', 'header': 'Counts'},
                     'y'              : {'fmt':'.1f', 'header': 'Counts'}
                     }
                 },
@@ -291,8 +302,6 @@ class FileLogger(QObject):
 
         sensor_info = self.SENSOR_CONFIG.get(sensor_type)
 
-        self.request_sensor_list()  #TESTING PURPOSES ONLY
-
         if not sensor_info:
             raise ValueError('Incorrect sensor name chosen')
 
@@ -380,10 +389,23 @@ class FileLogger(QObject):
                 
                 if name == 'UV_Spec':
                     self.nspec = 0
-                    filename = sensor_info['file_prefix']+ timestamp
+                    filepath = sensor_info['file_prefix']+ timestamp
 
-                    Path(sensor_info['file_prefix']+timestamp).mkdir(parents=True, exist_ok=True)
-                    self.SENSOR_CONFIG[sensor_type]['output_file'] = filename
+                    Path(filepath).mkdir(parents=True, exist_ok=True)
+                    Path(filepath + '/spec').mkdir(parents=True, exist_ok=True)
+                    Path(filepath + '/dark').mkdir(parents=True, exist_ok=True)
+
+                    self.SENSOR_CONFIG[sensor_type]['output_file'] = filepath + '/spec'
+
+                elif name == 'Dark_Spec':
+                    filepath = sensor_info['file_prefix']+ timestamp
+
+                    Path(filepath).mkdir(parents=True, exist_ok=True)
+                    Path(filepath + '/spec').mkdir(parents=True, exist_ok=True)
+                    Path(filepath + '/dark').mkdir(parents=True, exist_ok=True)
+
+                    self.SENSOR_CONFIG[sensor_type]['output_file'] = filepath + '/dark'
+
 
                 else:    
                     filename = sensor_info['file_prefix']+ timestamp
@@ -422,6 +444,6 @@ class FileLogger(QObject):
         for name in self.sensor_list:
             sensor_type = sensor_config2[name]['type']
             sensor_info = self.SENSOR_CONFIG.get(sensor_type)
-            if name != 'UV_Spec' and sensor_info['output_file'] is not None:
+            if name not in ['UV_Spec','Dark_Spec'] and sensor_info['output_file'] is not None:
                 sensor_info['output_file'].close()
                 sensor_info['output_file'] = None

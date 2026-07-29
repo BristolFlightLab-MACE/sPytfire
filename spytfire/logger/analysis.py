@@ -13,7 +13,7 @@ from spytfire.analysis.so2 import SO2Analysis
 # of previous spectra is complete
 
 class AnalysisLogger(QObject):
-    data_analysis = Signal(dict)
+    data_analysis = Signal(str, dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -62,7 +62,7 @@ class AnalysisLogger(QObject):
         initialised = self.worker.is_initialized
         
         if not analysing and initialised:
-            self.data_analysis.emit(data_dict)
+            self.data_analysis.emit(sensor_type,data_dict)
 
     def close_file(self):
         try:

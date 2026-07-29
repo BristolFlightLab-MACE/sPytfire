@@ -68,7 +68,7 @@ class SO2Analysis(QObject):
         self.calc_od_key = ['O3']
 
         self.dark_fnames = dummy_dnames
-        self.update_dark(dummy_dnames)
+        self.load_dark(dummy_dnames)
 
         # Create toggle to prevent multiple fitting iterations running at the 
         # same time
@@ -116,23 +116,41 @@ class SO2Analysis(QObject):
 
         self.params = params
         
-    def update_dark(self, dark_fnames):
+    def load_dark(self, dark_fnames):
 
         x, dark = average_spectra(dark_fnames, self.spec_type)
+        dummy = np.zeros_like(dark)
+
+        self.dark_dict = {400: dark}
+
         self.analyser.dark_spec = dark
+
+    def update_dark(self, data_dict):
+        int_time = data_dict['integration_time']
+        spec = data_dict['y']
+        self.dark_dict[int(int_time)] = spec
 
     def timestamp(self):
         """Returns the current time in nanoseconds from the connected."""
         return time.monotonic_ns()
 
-    @Slot(dict)
-    def analyse_spec(self, data_dict):
+    @Slot(str, dict)
+    def analyse_spec(self, sensor_type, data_dict):
 
         self.running = True
 
+        if sensor_type == 'dark':
+            self.update_dark(data_dict)
+            self.running = False
+            return
+
+        # Use current integration time to select most appropriate dark spectrum
+        self.data_dict = data_dict
+        int_time = self.data_dict['integration_time']
+        self.analyser.dark_spec = self.dark_dict[int_time]
+
         # If analysis code not already running then:
         try:
-            self.data_dict = data_dict
             self.analyse_spectrum()
 
         except Exception as e:

@@ -36,6 +36,7 @@ from PySide6.QtCore import QObject, QThread, Slot, QTimer, QCoreApplication, Qt,
 from spytfire.sensor.adafruit import AdafruitSensorWorker
 from spytfire.sensor.apogee import ApogeeSensorWorker
 from spytfire.sensor.bme import BMESensorWorker
+#from spytfire.sensor.bme_adafruit import BMESensorWorker
 from spytfire.sensor.gas import GasSensorWorker
 from spytfire.sensor.opc import OPCSensorWorker
 from spytfire.sensor.spectrometer import SpecWorker
@@ -242,6 +243,7 @@ class Controller(QObject):
                         self.curr_workers.append('Pyro_Down')
                     case 'UV_Spec':
                         self.curr_workers.append('UV_Spec')
+                        self.curr_workers.append('Dark_Spec')
                         self.curr_workers.append('SO2')
                     case _:
                         self.curr_workers.append(worker.name)

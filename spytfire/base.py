@@ -139,6 +139,6 @@ class UASWorker(BaseWorker):
             return
         
         if dt.year >= 2025:
-            time_string = dt.strftime('%H:%M:%S.%f')
+            time_string = dt.strftime('%Y-%m-%d %H:%M:%S.%f')
             # Directly emit the time update from Mavlink to sPytfire main
             self.data_ready.emit(time_string)

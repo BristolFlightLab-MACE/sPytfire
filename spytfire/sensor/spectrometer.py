@@ -135,8 +135,6 @@ class SpecWorker(BaseWorker):
             # Avaspec recommend directly setting device configuration values
             self.set_config()
 
-            self.acquire_darks()
-
             self.initialized = True
 
         except ConnectionError as e:
@@ -165,7 +163,18 @@ class SpecWorker(BaseWorker):
             self.measconfig.m_Control_m_StoreToRam = 0
 
     def acquire_darks(self):
-        pass
+
+        # NEED TO WORK OUT OPTIMUM SPACING HERE
+        dur_list = [50,100,200,400]
+        iterations = 10
+        for dur in dur_list:
+            for i in range(iterations):
+                self.measconfig.m_IntegrationTime = float(dur)
+                data = self.get_spectrum()
+                self.data_ready.emit(self.name, 'dark', data)
+
+        # Reset default integration time
+        self.measconfig.m_IntegrationTime = float(100)
 
     def get_wavelengths(self):
         """Get the wavelengths from the spectrometer and update the number of pixels."""
@@ -181,6 +190,8 @@ class SpecWorker(BaseWorker):
         self.wavelength = x[0:self.pixels]
 
     def start_work(self):
+        self.acquire_darks()
+
         while self.initialized:
             data = self.get_spectrum()
             self.data_ready.emit(self.name, 'spec', data)
