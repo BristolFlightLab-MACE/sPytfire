@@ -58,16 +58,18 @@ class GasSensorWorker(BasePollingWorker):
         super().__init__(name, serial_num, address, interval_ms)
 
         try:
-            channel, i2caddress, pin_pair = address
+            channel, i2caddress = address
 
+            print('Test Point 1')
             # Create the ADC object using the I2C bus
-            self.sensor = ADS1115(mux[channel], address = i2caddress, gain=1)
-
+            self.sensor = ADS1115(mux[channel], address = i2caddress)
+            print('Test Point 2')
             # Create differential input between channel 0 and 1
             self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
-            
+            print('Test Point 3')
             # Create differential input between channel 2 and 3
             self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
+            print('Test Point 4')
 
         except (NameError, ValueError, OSError, AttributeError, TypeError) as e:
             print(f"[{self.name}] Hardware failure: {e}")
@@ -81,10 +83,10 @@ class GasSensorWorker(BasePollingWorker):
 
         self.initialized = True
 
-    def get_params(self, num):
+    def get_params(self, identity):
 
-        if num == 'HCl_B1': 
-            self.params.append({
+        if identity in ('HCl_B1', 'HCl-B1'):
+            params = ({
                 "shunt_ohms": 220.0,
                 "maximum_ppm": 100,
                 "minimum_ppm": 0,
@@ -92,8 +94,8 @@ class GasSensorWorker(BasePollingWorker):
                 "max_current_ma": 20.0,
             })
 
-        elif num == 'IRC-A1':
-            self.params.append({
+        elif identity in ('IRC-A1', 'IRC_A1'):
+            params = ({
                 "shunt_ohms": 220.0,
                 "maximum_ppm": 5000,
                 "minimum_ppm": 0,
@@ -103,21 +105,24 @@ class GasSensorWorker(BasePollingWorker):
 
         else:
             print('Issue with serial_num')
+            return None
+
+        return params
     
     def process(self):
 
         try:
             # Measure voltage
-            mvolt0, timestamp0 = self.measure_mv(self,self.chan0)
-            mvolt1, timestamp1 = self.measure_mv(self,self.chan1)
+            mvolt0, timestamp0 = self.measure_mv(self.chan0)
+            mvolt1, timestamp1 = self.measure_mv(self.chan1)
 
             # Calculate concentration from voltage
             conc0 = self.calc_conc(mvolt0,self.serial_num[0])
             conc1 = self.calc_conc(mvolt1,self.serial_num[1])
 
             # Emit data in slot
-            self.emit_data(mvolt0,'CO2',conc0,timestamp0)
-            self.emit_data(mvolt1,'HCl',conc1,timestamp1)
+            self.emit_data('CO2', mvolt0, conc0, timestamp0)
+            self.emit_data('HCl', mvolt1, conc1, timestamp1)
 
         except Exception as e:
             self._safe_shutdown(reason = e)
@@ -125,7 +130,7 @@ class GasSensorWorker(BasePollingWorker):
     def measure_mv(self,channel):
 
         # Clean ADC memory for more accurate second read
-        _ = channel.voltage()
+        _ = channel.voltage
         time.sleep(0.01)
 
         # Perform voltage reading
@@ -138,13 +143,15 @@ class GasSensorWorker(BasePollingWorker):
         return(mvolt,timestamp)
 
     def calc_conc(self,v_diff,identity):
-        self.get_params(identity)
+        self.params = self.get_params(identity)
+        if self.params is None:
+            raise ValueError(f"Unknown sensor type: {identity}")
 
-        current_ma = (v_diff / self.params.shunt_ohms) * 1000.0
+        current_ma = (v_diff / self.params["shunt_ohms"]) * 1000.0
 
-        if identity == "HCl-B1":
+        if identity in ("HCl-B1", "HCl_B1"):
             conc = (current_ma*(self.params["maximum_ppm"]-self.params["minimum_ppm"]))/(self.params["max_current_ma"]-self.params["min_current_ma"]) #want to switch these with the maximum and minimum ppm for calibration so it can be easily adjsuted
-        elif identity == "IRC-A1":
+        elif identity in ("IRC-A1", "IRC_A1"):
             conc = (current_ma*(self.params["maximum_ppm"]-self.params["minimum_ppm"]))/(self.params["max_current_ma"]-self.params["min_current_ma"])
         else:
             raise ValueError(f"Unknown sensor type: {identity}")
@@ -152,12 +159,13 @@ class GasSensorWorker(BasePollingWorker):
         return conc
 
     def emit_data(self,identity,mvolt,conc,timestamp):
+
         # Your specific sensor logic here
-        data = {'mvolt': mvolt,
-                'name' : identity,
-                'conc' : conc,
-                'timestamp' : timestamp}
-        self.data_ready.emit(self.name, 'gas', data)
+        data_dict = {'mvolt': mvolt,
+                    'name' : identity,
+                    'conc' : conc,
+                    'timestamp' : timestamp}
+        self.data_ready.emit(self.name, 'alpha_gas', data_dict)
 
     def _safe_shutdown(self,reason="Unknown Error"):   
         if reason != ("User Interrupt (Ctrl+C)"):

@@ -33,11 +33,10 @@ class ConsoleLogger(QObject):
         print(name)
 
         for key in data_dict:
-            if key != 'y':
+            if key not in ['name']:
                 print(f"{key}:{data_dict[key]:.6f}")
             else:
-                print([np.array2string(v, precision=1, floatmode='fixed') if isinstance(v, np.ndarray) else str(v) 
-                       for v in data_dict[key]])
+                print(f"{key}:{data_dict[key]}")
 
     # Create a dummy slot to ignore the arrival of data from the spectrometer            
     @Slot(str, str, dict)

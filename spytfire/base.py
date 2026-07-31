@@ -29,7 +29,6 @@ class BaseWorker(QObject):
         super().__init__()
         self.initialized = False
         self.name = name
-        self.interval_ms = interval_ms
         self.serial_num = serial_num
         
         # Force QueuedConnection so the stop() slot runs on the worker thread
@@ -62,9 +61,9 @@ class BaseWorker(QObject):
 class BasePollingWorker(BaseWorker):
     """Handles workers that require a constant heartbeat timer (Sensors)."""
     def __init__(self, name, serial_num = None, address = None, interval_ms=100):
-        super().__init__(name, serial_num, address, interval_ms)
+        super().__init__(name=name, serial_num=serial_num, address=address, interval_ms=None)
         self.timer = None
-
+        self.interval_ms = interval_ms
 
     def start_work(self):
         self.timer = QTimer(self)
@@ -110,8 +109,8 @@ class SensorWorker(BasePollingWorker):
             sensor payload computer timestamp
 
         """   
-        # Pass shared variables to BaseWorker
-        super().__init__(name, serial_num, interval_ms)
+        # Pass shared variables to BasePollingWorker
+        super().__init__(name=name, serial_num=serial_num, address=address, interval_ms=interval_ms)
 
         self.initialized = True
 

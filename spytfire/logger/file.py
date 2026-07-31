@@ -198,11 +198,11 @@ class FileLogger(QObject):
                     }
                 },
 
-            'gas':{
+            'alpha_gas':{
                 'file_prefix':f'{prefix}gas/',
                 'fields': {
                     'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'name'          : {'fmt':'.0f', 'header': 'Name'},
+                    'name'          : {'fmt':'str', 'header': 'Name'},
                     'mvolt'         : {'fmt':'.2f', 'header': 'Sensor Voltage (V)'},
                     'conc'          : {'fmt':'.1f', 'header': 'Gas Concentration (ppb)'}
                     }
@@ -289,9 +289,10 @@ class FileLogger(QObject):
             
             values_list = []
 
-            for k in fields_config.keys():
-                fmt = fields_config[k]['fmt']
-                values_list.append(f"{data_dict[k]:{fmt}}")
+            for key in fields_config.keys():
+                fmt = fields_config[key]['fmt']
+                if fmt not in ['str','blah']:
+                    values_list.append(f"{data_dict[key]:{fmt}}")
 
             values = ", ".join(values_list)
             

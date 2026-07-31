@@ -23,21 +23,18 @@ import os
 import time
 import numpy as np
 
-try:
-    from ifit.load_spectra import read_spectrum, average_spectra
-    from ifit.spectral_analysis import Analyser
-    from ifit.parameters import Parameters
 
-except ModuleNotFoundError:
-    print('iFit not found - download from University of Manchester github')
+from ifit.load_spectra import average_spectra
+from ifit.spectral_analysis import Analyser
+from ifit.parameters import Parameters
 
 # =============================================================================
 # Define the analysis worker and its attributes
 # =============================================================================
 
-dummy_dir = (r'C:\Users\cx25261\Documents\projects\MACE\coding\iFit\Results')
+#dummy_dir = (r'C:\Users\cx25261\Documents\projects\MACE\coding\iFit\Results')
 
-dummy_dnames = [dummy_dir + '/dark/' + file for file in os.listdir(dummy_dir + '/dark')]
+#dummy_dnames = [dummy_dir + '/dark/' + file for file in os.listdir(dummy_dir + '/dark')]
 
 class SO2Analysis(QObject):
     data_ready = Signal(str, str, dict)
@@ -67,8 +64,8 @@ class SO2Analysis(QObject):
         self.int_limit = [0,65000]
         self.calc_od_key = ['O3']
 
-        self.dark_fnames = dummy_dnames
-        self.load_dark(dummy_dnames)
+        #self.dark_fnames = dummy_dnames
+        #self.load_dark(dummy_dnames)
 
         # Create toggle to prevent multiple fitting iterations running at the 
         # same time

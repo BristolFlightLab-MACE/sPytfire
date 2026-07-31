@@ -209,10 +209,22 @@ class Controller(QObject):
         if worker_class is SensorWorker:
             print(f"WARNING: Default Worker created for sensor_type '{sensor_type}'")
 
-        if self.mux != None:
-            worker = worker_class(name, serial_num, address, interval_ms=interval, mux = self.mux)
+        if self.mux is not None:
+            worker = worker_class(
+                name=name,
+                serial_num=serial_num,
+                address=address,
+                interval_ms=interval,
+                mux=self.mux,
+            )
         else:
-            worker = worker_class(name, serial_num, address, interval_ms=interval, mux = None)
+            worker = worker_class(
+                name=name,
+                serial_num=serial_num,
+                address=address,
+                interval_ms=interval,
+                mux=None,
+            )
         
         # Check that the worker has been created, and if not, skip the thread handoff
         if not worker.is_initialized:
@@ -224,7 +236,7 @@ class Controller(QObject):
         # Configure QThreads
         thread = QThread()
         worker.moveToThread(thread)
-        
+
         thread.started.connect(worker.start_work)
         thread.finished.connect(worker.deleteLater)
         
@@ -232,7 +244,8 @@ class Controller(QObject):
             if sensor_type == 'spec':
                 worker.data_ready.connect(handler.handle_spec)
             else:
-                worker.data_ready.connect(handler.handle_data)
+                if hasattr(handler, "handle_data"):
+                    worker.data_ready.connect(handler.handle_data)
         
         self.threads.append(thread)
         self.workers.append(worker)

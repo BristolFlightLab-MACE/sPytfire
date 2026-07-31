@@ -29,7 +29,7 @@ class MavlinkWorker(BaseWorker):
     uas_time_updated  = Signal('qint64')
 
     def __init__(self, connection_str, channel_num = 11, name="MAVLink"):
-        super().__init__(name)
+        super().__init__(name,serial_num=None,address=None,interval_ms=None)
         
         # Identify the name of the MAVLINK channel from the input number
         channel_dict = {i: f'chan{i}_raw' for i in range(1, 19)}

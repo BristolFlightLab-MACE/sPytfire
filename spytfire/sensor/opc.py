@@ -78,17 +78,21 @@ class OPCSensorWorker(BasePollingWorker):
         try:
             spi = spidev.SpiDev()
             spi.open(0, 0)
-        except (NameError, ValueError, serial.SerialException) as e:
-            print(f"[{name}] OPC Method 1 failed: {e}")
+        except Exception as e:
+            print(f"[{name}] OPC SPI setup failed: {e}")
+            self.initialized = False
+            self.sensor = None
             return
 
-        if spi == None:
+        if spi is None:
             try:
                 # Two options depending on whether usb or spi connection is used
                 spi = SPI('/dev/ttyACM0')
 
-            except (NameError, ValueError, serial.SerialException) as e:
-                print(f"[{name}] Hardware failure: {e}")
+            except Exception as e:
+                print(f"[{name}] OPC USB setup failed: {e}")
+                self.initialized = False
+                self.sensor = None
                 return
 
         # Return to common code
@@ -96,14 +100,23 @@ class OPCSensorWorker(BasePollingWorker):
         spi.max_speed_hz = 500000
         spi.lsbfirst = False
 
-        self.sensor = opc.detect(spi)
-        self.sensor.on()
-
+        try:
+            self.sensor = opc.detect(spi)
+            self.sensor.on()
+        except Exception as e:
+            print(f"[{name}] OPC USB setup failed: {e}")
+            self.initialized = False
+            self.sensor = None
+            return
+            
         # Track hardware error states
         self.consecutive_failures = 0
         self.MAX_ALLOWED_FAILURES = 5  # Shut down after ~5 failed attempts
         
         time.sleep(0.6)                # Recommended 600 ms before measurements
+
+        # Probe once so a missing/quiet sensor is detected immediately.
+        self.sensor.histogram()
         
         self.initialized = True
     
@@ -136,14 +149,11 @@ class OPCSensorWorker(BasePollingWorker):
                 self._safe_shutdown(reason="Repeated Data Corruption/Key Errors")
         
         except Exception as hardware_err:
-            print(f"OPC Read Error: {hardware_err}")
-            
             self.consecutive_failures += 1
-            
-            print(f"[{self.name}] SPI Hardware Error ({self.consecutive_failures}/{self.MAX_ALLOWED_FAILURES}): {hardware_err}")
+            print(f"[{self.name}] OPC read failed ({self.consecutive_failures}/{self.MAX_ALLOWED_FAILURES}): {hardware_err}")
             
             if self.consecutive_failures >= self.MAX_ALLOWED_FAILURES:
-                self.safe_shutdown(reason="Repeated Data Corruption/Key Errors")
+                self._safe_shutdown(reason="Repeated OPC read failures")
     
                 
     def _safe_shutdown(self, reason="Unknown Error"):
