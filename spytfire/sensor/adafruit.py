@@ -12,14 +12,7 @@ Created on Tue Mar 31 12:56:52 2026
 # Import the BasePolling Worker from the base module to apply to Apogee sensors
 from spytfire.base import BasePollingWorker
 
-# Import modules for adafruit sensors
-try:
-    import board
-except NotImplementedError:
-    print("Hardware not detected. Running in Simulation Mode.")
-
 from adafruit_as7341 import AS7341, Gain
-import adafruit_tca9548a 
 
 # Import Signal from PySide to allow the workers to send signals
 from PySide6.QtCore import Signal
@@ -34,7 +27,7 @@ class AdafruitSensorWorker(BasePollingWorker):
     '''Class to read an Adafruit AS7341 10-channel spectrometer.'''
     data_ready = Signal(str, str, dict)
 
-    def __init__(self, name, serial_num = None, address = None, interval_ms=1000):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=1000, mux=None):
         """
         A BasePollingWorker to connect and operate the Adafruit7341 
         10-channel spectrometer.
@@ -65,12 +58,8 @@ class AdafruitSensorWorker(BasePollingWorker):
         super().__init__(name, serial_num, address, interval_ms)
 
         try:
-            # Setup
-            i2c = board.I2C() # uses board.SCL and board.SDA
-
             channel, i2caddress = address
 
-            mux = adafruit_tca9548a.PCA9546A(i2c)
             self.sensor = AS7341(mux[channel])
             
             self.sensor.gain = Gain.GAIN_0_5X
@@ -90,7 +79,7 @@ class AdafruitSensorWorker(BasePollingWorker):
             
             self.initialized = True
             
-        except (NameError, ValueError, OSError, AttributeError) as e:
+        except (NameError, ValueError, OSError, AttributeError, TypeError) as e:
             print(f"[{name}] Hardware failure: {e}")
             self.sensor = None
             return

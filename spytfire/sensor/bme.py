@@ -31,7 +31,7 @@ class BMESensorWorker(BasePollingWorker):
     '''Class to read a BME280 and emit the data to the controller.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, address = None, interval_ms=200):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200, mux=None):
         """
         A BasePollingWorker to connect and operate a BME280 environment
         sensor that measures surrounding temperature, pressure and 

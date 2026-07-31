@@ -202,6 +202,7 @@ class FileLogger(QObject):
                 'file_prefix':f'{prefix}gas/',
                 'fields': {
                     'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'name'          : {'fmt':'.0f', 'header': 'Name'},
                     'mvolt'         : {'fmt':'.2f', 'header': 'Sensor Voltage (V)'},
                     'conc'          : {'fmt':'.1f', 'header': 'Gas Concentration (ppb)'}
                     }

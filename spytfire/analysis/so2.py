@@ -147,6 +147,8 @@ class SO2Analysis(QObject):
         # Use current integration time to select most appropriate dark spectrum
         self.data_dict = data_dict
         int_time = self.data_dict['integration_time']
+
+        print(int_time)
         self.analyser.dark_spec = self.dark_dict[int_time]
 
         # If analysis code not already running then:

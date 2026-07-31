@@ -42,4 +42,5 @@ class ConsoleLogger(QObject):
     # Create a dummy slot to ignore the arrival of data from the spectrometer            
     @Slot(str, str, dict)
     def handle_spec(self, name, sensor_type, data_dict):
+        print(np.max(data_dict['y']))
         pass

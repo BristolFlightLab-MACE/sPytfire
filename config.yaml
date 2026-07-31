@@ -61,8 +61,8 @@ sensors:
     address: [1,0x4A]
     interval: 1000
     
-  #CO2:
-  #  serial_num: null
-  #  type: alpha_gas
-  #  address: [2,0x48]
-  #  interval: 1000
+  CO2_HCl:
+    serial_num: [IRC-A1,HCl-B1]
+    type: alpha_gas
+    address: [2,0x48]
+    interval: 1000

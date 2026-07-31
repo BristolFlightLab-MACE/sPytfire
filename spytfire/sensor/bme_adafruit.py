@@ -14,12 +14,6 @@ from spytfire.base import BasePollingWorker
 # Import Signal from PySide to allow the workers to send signals
 from PySide6.QtCore import Signal
 
-try:
-    import board
-except NotImplementedError:
-    print("Hardware not detected. Running in Simulation Mode.")
-
-import adafruit_tca9548a
 import adafruit_bme280.basic as adafruit_bme280
 
 # =============================================================================
@@ -30,7 +24,7 @@ class BMESensorWorker(BasePollingWorker):
     '''Class to read a BME280 and emit the data to the controller.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, address = None, interval_ms=200):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200, mux=None):
         """
         A BasePollingWorker to connect and operate a BME280 environment
         sensor that measures surrounding temperature, pressure and 
@@ -62,11 +56,7 @@ class BMESensorWorker(BasePollingWorker):
         super().__init__(name, serial_num, address, interval_ms)
         
         try:
-            i2c = board.I2C() # Could move I2C and mux centrally
-
             channel, i2caddress = address
-
-            mux = adafruit_tca9548a.PCA9546A(i2c)
 
             self.sensor = adafruit_bme280.Adafruit_BME280_I2C(
                 mux[channel],

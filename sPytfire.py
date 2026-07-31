@@ -32,11 +32,18 @@ connection_str = "/dev/serial0"
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, QThread, Slot, QTimer, QCoreApplication, Qt, Signal, QEventLoop
 
+try:
+    import board
+except NotImplementedError:
+    print("Hardware not detected. Running in Simulation Mode.")
+
+import adafruit_tca9548a 
+
 # Load custom modules containing the workers for each sensor/connection
 from spytfire.sensor.adafruit import AdafruitSensorWorker
 from spytfire.sensor.apogee import ApogeeSensorWorker
-from spytfire.sensor.bme import BMESensorWorker
-#from spytfire.sensor.bme_adafruit import BMESensorWorker
+#from spytfire.sensor.bme import BMESensorWorker
+from spytfire.sensor.bme_adafruit import BMESensorWorker
 from spytfire.sensor.gas import GasSensorWorker
 from spytfire.sensor.opc import OPCSensorWorker
 from spytfire.sensor.spectrometer import SpecWorker
@@ -107,12 +114,20 @@ class Controller(QObject):
         self.workers = []
 
         self._connect_analysis()
+
         # Setup MAVLINK
         self._add_mavlink(conn_str, rc_channel)
 
         # Setup UAS Time
         if self.mav_worker.is_initialized:
             self._add_uas_time()
+
+        # Setup the I2C bus and multiplexing
+        try:
+            i2c = board.I2C()
+            self.mux = adafruit_tca9548a.PCA9546A(i2c)
+        except:
+            self.mux = None
 
         # Setup Sensors
         for name, info in SENSOR_INFO.items():
@@ -194,7 +209,10 @@ class Controller(QObject):
         if worker_class is SensorWorker:
             print(f"WARNING: Default Worker created for sensor_type '{sensor_type}'")
 
-        worker = worker_class(name, serial_num, address, interval_ms=interval)
+        if self.mux != None:
+            worker = worker_class(name, serial_num, address, interval_ms=interval, mux = self.mux)
+        else:
+            worker = worker_class(name, serial_num, address, interval_ms=interval, mux = None)
         
         # Check that the worker has been created, and if not, skip the thread handoff
         if not worker.is_initialized:

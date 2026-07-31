@@ -24,14 +24,7 @@ import numpy as np
 
 import time
 
-# Import modules for apogee sensors
-try:
-    import board
-except NotImplementedError:
-    print("Hardware not detected. Running in Simulation Mode.")
-
 from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
-import adafruit_tca9548a 
 
 def find_coefficients(serial_num):
 
@@ -108,7 +101,7 @@ class ApogeeSensorWorker(BasePollingWorker):
     '''Class to read an ADS1115 and interpret the voltages as Apogee signals.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, address = None, interval_ms=200):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200, mux=None):
 
         """
         A BasePollingWorker to connect and operate either 1 or 2
@@ -147,19 +140,12 @@ class ApogeeSensorWorker(BasePollingWorker):
         super().__init__(name, serial_num, address, interval_ms)
 
         try:
-            ### ED TO EDIT I2C BUS HERE TO INSERT DUPLEXER LOGIC
-
-            # Create the I2C bus
-            i2c = board.I2C()
-
             channel, i2caddress = address
-
-            mux = adafruit_tca9548a.PCA9546A(i2c)
             
             # Create the ADC object using the I2C bus
             self.sensor = ADS1115(mux[channel],address = i2caddress)
 
-        except (NameError, ValueError, OSError, AttributeError) as e:
+        except (NameError, ValueError, OSError, AttributeError, TypeError) as e:
             print(f"[{self.name}] Hardware failure: {e}")
             
             if hasattr(self, 'i2c') and self.i2c:

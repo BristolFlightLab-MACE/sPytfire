@@ -42,7 +42,7 @@ class SpecWorker(BaseWorker):
     '''Class to operate an Avaspec spectrometer and emit data to Controller.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, address = None, interval_ms = None):
+    def __init__(self, name, serial_num = None, address = None, interval_ms = None, mux=None):
         """
         Operates an Avaspec Nexos spectrometer using the
         BaseWorker class. 
@@ -257,7 +257,7 @@ class SpecWorker(BaseWorker):
         data = {'x': self.wavelength,
                 'y': self.spectraldata,
                 'serial_number': self.serial_number,
-                'integration_time': self.measconfig.m_IntegrationTime,
+                'integration_time': int(self.measconfig.m_IntegrationTime),
                 'coadds': self.measconfig.m_NrAverages,
                 'timestamp': timestamp,
                 'dark_correction': None,

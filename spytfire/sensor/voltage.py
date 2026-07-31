@@ -17,15 +17,8 @@ from spytfire.base import BasePollingWorker
 
 # Import Signal from PySide to allow the workers to send signals
 from PySide6.QtCore import Signal
-
-# Import modules for apogee sensors
-try:
-    import board
-except NotImplementedError:
-    print("Hardware not detected. Running in Simulation Mode.")
     
 from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
-import adafruit_tca9548a
 
 # =============================================================================
 # Create new SensorWorker for the internal voltage ADS1115
@@ -35,7 +28,7 @@ class VoltageSensorWorker(BasePollingWorker):
     '''Class to read the excitation voltage from the ADC and emit it to the controller.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, address = None, interval_ms=200):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200, mux=None):
         """
         A BasePollingWorker that replicates the structure of
         apogee_sensor.py to use an adafruit ADS1115 to measure the 
@@ -69,16 +62,11 @@ class VoltageSensorWorker(BasePollingWorker):
         
         try:
             channel, i2caddress = address
-
-            # Create the I2C bus
-            i2c = board.I2C()
-
-            mux = adafruit_tca9548a.PCA9546A(i2c)
             
             # Create the ADC object using the I2C bus
             self.ads = ADS1115(mux[channel],address = i2caddress)
         
-        except (NameError, ValueError, OSError, AttributeError) as e:
+        except (NameError, ValueError, OSError, AttributeError, TypeError) as e:
             print(f"[{name}] Hardware failure: {e}")
             self.sensor = None
             return
