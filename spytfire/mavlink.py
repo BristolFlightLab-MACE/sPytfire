@@ -87,6 +87,13 @@ class MavlinkWorker(BaseWorker):
                              'vehicle_timestamp': msg.time_boot_ms,
                              'timestamp': self.timestamp()}
                 self.data_ready.emit('GPS', 'gps', data_dict)
+            case 'ATTITUDE':                                      #msg_type  30
+                data_dict = {'roll': msg.roll,
+                             'pitch': msg.pitch,
+                             'yaw': msg.yaw,
+                             'vehicle_timestamp': msg.time_boot_ms,
+                             'timestamp': self.timestamp()}
+                self.data_ready.emit('IMU', 'attitude', data_dict)
             case 'RC_CHANNELS':                                   #msg_type  35
                 channel_value = getattr(msg, self.channel_name, 1500)
                 if channel_value == 0:

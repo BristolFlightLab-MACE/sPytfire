@@ -31,6 +31,7 @@ sensor_config2['Pyro_Down']  = {'serial_num': None, 'type': 'apogee_sd', 'interv
 sensor_config2['Pygeo_Up']   = {'serial_num': None, 'type': 'apogee_lu', 'interval': 2000}
 sensor_config2['Pygeo_Down'] = {'serial_num': None, 'type': 'apogee_ld', 'interval': 2000}
 sensor_config2['GPS']        = {'serial_num': None, 'type': 'gps'      , 'interval': 2000}
+sensor_config2['IMU']        = {'serial_num': None, 'type': 'attitude' , 'interval': 2000}
 sensor_config2['SO2']        = {'serial_num': None, 'type': 'so2'      , 'interval': 2000}
 sensor_config2['Dark_Spec']  = {'serial_num': None, 'type': 'dark'     , 'interval': 2000}
 
@@ -91,6 +92,16 @@ class FileLogger(QObject):
                     'lat'        : {'fmt':'.6f', 'header': 'Latitude (deg)'},
                     'lon'        : {'fmt':'.6f', 'header': 'Longitude (deg)'},
                     'alt'        : {'fmt':'.1f', 'header': 'Altitude (m)'}
+                    }
+                },
+
+            'attitude'       : {
+                'file_prefix': f'{prefix}attitude/',
+                'fields': {
+                    'timestamp'  : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'pitch'        : {'fmt':'.6f', 'header': 'Pitch (deg)'},
+                    'yaw'        : {'fmt':'.6f', 'header': 'Yaw (deg)'},
+                    'roll'        : {'fmt':'.6f', 'header': 'Roll (deg)'}
                     }
                 },
             

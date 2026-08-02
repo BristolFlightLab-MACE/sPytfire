@@ -267,6 +267,7 @@ class Controller(QObject):
                 match worker.name:
                     case 'MAVLink':
                         self.curr_workers.append('GPS')
+                        self.curr_workers.append('IMU')
                     case 'UAS_TIME':
                         pass
                     case 'Pyronometer':
