@@ -54,6 +54,17 @@ class SpecWorker(BaseWorker):
         ----------
         name : string
             A unique ID for the specific sensor in use
+        serial_num : string, optional
+            The serial number of the device to connect to. Not needed
+            in this class but required for BaseWorker.
+        address : string, optional
+            The address of the device to connect to. Not needed
+            in this class but required for BaseWorker.
+        interval_ms : string, optional
+            The interval at which to acquire data. Not needed
+            in this class but required for BaseWorker.
+        mux : string, optional
+            The i2c bus required for other devices. Not needed here.
         
         Attributes
         ----------
@@ -81,6 +92,15 @@ class SpecWorker(BaseWorker):
         self.wavelength = [0.0] * 4096
         self.spectraldata = [0.0] * 4096
         self.nr_scanned = 0
+
+        # TEST RANGE OF EXPOSURE TIMES TO DETERMINE OPTIMAL CONFIGURATION
+        self.exposure_presets = [25, 50, 100, 200, 400]
+        
+        # Define spectrometer limits
+        self.sat_limit = 65530
+        self.min_limit = self.sat_limit * 0.30
+        self.max_limit = self.sat_limit * 0.85
+        self.warn_limit = self.sat_limit * 0.99
 
         try:
             ret = av.AVS_Init(-1)
@@ -163,11 +183,9 @@ class SpecWorker(BaseWorker):
             self.measconfig.m_Control_m_StoreToRam = 0
 
     def acquire_darks(self):
-
         # NEED TO WORK OUT OPTIMUM SPACING HERE
-        dur_list = [50,100,200,400]
         iterations = 10
-        for dur in dur_list:
+        for dur in self.exposure_presets:
             for i in range(iterations):
                 self.measconfig.m_IntegrationTime = float(dur)
                 data = self.get_spectrum()
@@ -195,7 +213,31 @@ class SpecWorker(BaseWorker):
         while self.initialized:
             data = self.get_spectrum()
             self.data_ready.emit(self.name, 'spec', data)
-        
+            self.update_interval()
+
+    def update_interval(self):
+        """Update the interval of the timer based on the current integration time and coadds."""
+
+        # Get the peak value of the spectrum
+        peak = np.max(self.spectraldata)
+        changed = False
+
+        # Adjust the integration time based on the peak value and the defined limits
+        if peak > self.warn_limit and self.exposure_index > 2:
+            self.exposure_index -= 3
+            changed = True
+
+        elif peak > self.max_limit and self.exposure_index > 0:
+            self.exposure_index -= 1
+            changed = True
+
+        elif peak < self.min_limit and self.exposure_index < len(self.exposure_presets) - 1:
+            self.exposure_index += 1
+            changed = True
+    
+        if changed:
+            self.measconfig.m_IntegrationTime = float(self.exposure_presets[self.exposure_index])
+
     def get_spectrum(self):
         """Acquire single spectrum and timestamp of the spectrum acquisition"""
 

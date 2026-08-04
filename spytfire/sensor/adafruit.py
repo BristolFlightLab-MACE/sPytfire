@@ -83,6 +83,16 @@ class AdafruitSensorWorker(BasePollingWorker):
             print(f"[{name}] Hardware failure: {e}")
             self.sensor = None
             return
+
+        # Set predefined exposure times
+        self.astep_table = [59, 119, 299, 599, 1198, 2997, 5994, 11989, 29975, 53956]
+        # gives exposure times of [1, 2, 5, 10, 20, 50, 100, 200, 500, 900] ms to within 0.1%
+        self.exposure_index = 6  # start at 100 ms
+        
+        # Set default starting parameters independant of sensor object
+        self.atime = 5  #In this example is fixed
+        self.astep = self.astep_table[self.exposure_index]
+        self.needs_cooldown = False
     
     def flash_LED(self, repeats = 1):
             loops = 0
@@ -93,8 +103,41 @@ class AdafruitSensorWorker(BasePollingWorker):
                 time.sleep(0.1)
                 loops += 1
             return
+    
+    def autoscale_integration(self, readings_list):
 
-    def autoscale_integration(self,readings_list):
+        # Test at low light levels to see if the current code still operates
+        # with the smaller dynamic range expected at low light levels.
+
+        peak = max(readings_list)
+        changed = False
+    
+        current_limit = min(65535, (self.atime + 1) * (self.astep + 1))
+        min_limit = current_limit * 0.30
+        max_limit = current_limit * 0.85
+        warn_limit = current_limit * 0.99
+        
+        if peak > warn_limit and self.exposure_index > 2:
+            self.exposure_index -= 3
+            changed = True
+            
+        elif peak > max_limit and self.exposure_index > 0:
+            self.exposure_index -= 1
+            changed = True
+
+        elif peak < min_limit and self.exposure_index < len(self.astep_table) - 1:
+            self.exposure_index += 1
+            changed = True
+    
+        if changed:
+            self.astep = self.astep_table[self.exposure_index]
+            self.sensor.astep = self.astep
+            self.exposure_time = (self.atime + 1) * (self.astep + 1) * 2.78
+            self.needs_cooldown = True
+    
+        return
+    
+    def autoscale_integration_old(self,readings_list):
         peak = max(readings_list)
         changed = False
         
