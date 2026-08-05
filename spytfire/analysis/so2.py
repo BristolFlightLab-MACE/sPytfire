@@ -63,6 +63,7 @@ class SO2Analysis(QObject):
         self.resid_limit = 6
         self.int_limit = [0,65000]
         self.calc_od_key = ['O3']
+        self.dark_dict = {}
 
         #self.dark_fnames = dummy_dnames
         #self.load_dark(dummy_dnames)
@@ -118,7 +119,7 @@ class SO2Analysis(QObject):
         x, dark = average_spectra(dark_fnames, self.spec_type)
         dummy = np.zeros_like(dark)
 
-        self.dark_dict = {400: dark}
+        self.dark_dict[400] = dark
 
         self.analyser.dark_spec = dark
 

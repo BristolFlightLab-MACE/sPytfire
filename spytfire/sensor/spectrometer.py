@@ -95,6 +95,7 @@ class SpecWorker(BaseWorker):
 
         # TEST RANGE OF EXPOSURE TIMES TO DETERMINE OPTIMAL CONFIGURATION
         self.exposure_presets = [25, 50, 100, 200, 400]
+        self.exposure_index = 3
         
         # Define spectrometer limits
         self.sat_limit = 65530
@@ -219,7 +220,7 @@ class SpecWorker(BaseWorker):
         """Update the interval of the timer based on the current integration time and coadds."""
 
         # Get the peak value of the spectrum
-        peak = np.max(self.spectraldata)
+        peak = np.percentile(self.spectraldata, 99.8)
         changed = False
 
         # Adjust the integration time based on the peak value and the defined limits
