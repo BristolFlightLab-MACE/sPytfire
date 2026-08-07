@@ -63,7 +63,7 @@ class BMESensorWorker(BasePollingWorker):
                 address=i2caddress
             )
 
-        except (NameError,ValueError, OSError, RuntimeError, TypeError) as e:
+        except Exception as e:
             print(f"[{name}] Hardware failure: {e}")
             self.sensor = None
             return

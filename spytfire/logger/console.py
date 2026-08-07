@@ -32,11 +32,14 @@ class ConsoleLogger(QObject):
         #pass
         print(name)
 
-        for key in data_dict:
-            if key not in ['name']:
-                print(f"{key}:{data_dict[key]:.6f}")
-            else:
-                print(f"{key}:{data_dict[key]}")
+        if name in ['SYSTEM_TIME','GLOBAL_POSITION_INT','ATTITUDE']:
+            print(f"[{name}] {sensor_type} : {data_dict}")
+
+        #for key in data_dict:
+        #    if key not in ['name']:
+        #        print(f"{key}:{data_dict[key]:.6f}")
+        #    else:
+        #        print(f"{key}:{data_dict[key]}")
 
     # Create a dummy slot to ignore the arrival of data from the spectrometer            
     @Slot(str, str, dict)

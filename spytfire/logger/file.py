@@ -5,6 +5,8 @@ Created on Tue Mar 31 12:04:52 2026
 @email: matt(dot)varnam
 """
 # Import Signal from PySide to allow the workers to send signals
+from multiprocessing.sharedctypes import Value
+
 from PySide6.QtCore import QObject, Slot, Signal
 
 import numpy as np
@@ -21,11 +23,15 @@ __version__ = '1.2'
 __fileversion__ = '1.2'
 __author__ = 'Matthew Varnam'
 
-
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
 sensor_config2 = config['sensors']
+
+# Perform check that sensor configuration is not None, and if it is set to empty
+if sensor_config2 is None:
+    sensor_config2 = {}
+
 sensor_config2['Pyro_Up']    = {'serial_num': None, 'type': 'apogee_su', 'interval': 2000}
 sensor_config2['Pyro_Down']  = {'serial_num': None, 'type': 'apogee_sd', 'interval': 2000}
 sensor_config2['Pygeo_Up']   = {'serial_num': None, 'type': 'apogee_lu', 'interval': 2000}
@@ -34,6 +40,7 @@ sensor_config2['GPS']        = {'serial_num': None, 'type': 'gps'      , 'interv
 sensor_config2['IMU']        = {'serial_num': None, 'type': 'attitude' , 'interval': 2000}
 sensor_config2['SO2']        = {'serial_num': None, 'type': 'so2'      , 'interval': 2000}
 sensor_config2['Dark_Spec']  = {'serial_num': None, 'type': 'dark'     , 'interval': 2000}
+sensor_config2['Default']    = {'serial_num': None, 'type': 'default'  , 'interval': 2000}
 
 # =========================================================================
 #  Logger to save measured data to files
@@ -225,6 +232,14 @@ class FileLogger(QObject):
                     'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'so2'           : {'fmt':'.2E', 'header': 'SO2 Column (molecules/cm2)'},
                     'o3'            : {'fmt':'.2E', 'header': 'O3 Column (molecules/cm2)'}
+                    }
+                },
+
+            'default':{
+                'file_prefix':f'{prefix}default/',
+                'fields': {
+                    'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'value'         : {'fmt':'.2E', 'header': 'Rand (arb)'}
                     }
                 }
             }

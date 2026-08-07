@@ -60,7 +60,7 @@ class MavlinkWorker(BaseWorker):
                 try:
                     # blocking=True with a timeout lets the CPU rest 
                     # without using Qt Timer.
-                    msg = self.mav_conn.recv_match(type=['SYSTEM_TIME','RC_CHANNELS','TIMESYNC'],
+                    msg = self.mav_conn.recv_match(type=['SYSTEM_TIME','RC_CHANNELS','GLOBAL_POSITION_INT'],
                                                     blocking=True, timeout=0.1)
                 
                     if msg:

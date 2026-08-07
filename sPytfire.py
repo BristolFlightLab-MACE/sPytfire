@@ -23,7 +23,8 @@ on_off_channel = 11
 # Manual change to mavlink connection string
 # connection_str = "COM6"
 # connection_str = "/dev/ttyS0"
-connection_str = "/dev/serial0"
+#connection_str = "/dev/serial0"
+connection_str = "udpin:192.168.137.51:14550"
 
 # =========================================================================
 #  Define imports
@@ -37,7 +38,7 @@ try:
 except NotImplementedError:
     print("Hardware not detected. Running in Simulation Mode.")
 
-import adafruit_tca9548a 
+import adafruit_tca9548a
 
 # Load custom modules containing the workers for each sensor/connection
 from spytfire.sensor.adafruit import AdafruitSensorWorker
@@ -72,6 +73,15 @@ Path("data_logs").mkdir(parents=True, exist_ok=True)
 with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
+if config is None:
+    print("[!] No configuration found in config.yaml. Using default configuration.")
+    config = {}
+
+if config.get('sensors') is None:
+    print("[!] No sensor configuration found in config.yaml. Using default configuration.")
+    config['sensors'] = {}
+    config['sensors']['Default'] = {'serial_num': None, 'type': 'default', 'address': None, 'interval': 1000}
+
 sensor_config = config['sensors']
 
 # Map sensor types to their worker classes
@@ -85,7 +95,8 @@ SENSOR_TYPE_TO_WORKER = {
     'spec'      : SpecWorker,
     'alpha_gas' : GasSensorWorker,
     'alpha_afe' : AFESensorWorker,
-    'fake_spec' : DummySpecWorker
+    'fake_spec' : DummySpecWorker,
+    'default'   : SensorWorker
 }
 
 # Build a combined sensor info mapping from config file

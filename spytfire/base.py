@@ -84,7 +84,7 @@ class BasePollingWorker(BaseWorker):
 class SensorWorker(BasePollingWorker):
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, address = None, interval_ms=100):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=100, mux = None):
         """
         Simulate a completed BasePollingWorker to demonstrate how a sensor
         worker can interface with the base class.
