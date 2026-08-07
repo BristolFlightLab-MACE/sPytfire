@@ -60,16 +60,14 @@ class GasSensorWorker(BasePollingWorker):
         try:
             channel, i2caddress = address
 
-            print('Test Point 1')
             # Create the ADC object using the I2C bus
             self.sensor = ADS1115(mux[channel], address = i2caddress)
-            print('Test Point 2')
+
             # Create differential input between channel 0 and 1
             self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
-            print('Test Point 3')
+
             # Create differential input between channel 2 and 3
             self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
-            print('Test Point 4')
 
         except (NameError, ValueError, OSError, AttributeError, TypeError) as e:
             print(f"[{self.name}] Hardware failure: {e}")

@@ -304,6 +304,8 @@ class FileLogger(QObject):
                 fmt = fields_config[key]['fmt']
                 if fmt not in ['str','blah']:
                     values_list.append(f"{data_dict[key]:{fmt}}")
+                else:
+                    values_list.append(data_dict[key])
 
             values = ", ".join(values_list)
             

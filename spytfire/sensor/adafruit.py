@@ -65,13 +65,23 @@ class AdafruitSensorWorker(BasePollingWorker):
             self.sensor.gain = Gain.GAIN_0_5X
             
             # Starting default for adafruit sensor is atime = 100 and astep = 999
-            self.atime = self.sensor.atime
-            self.astep = self.sensor.astep
+            #self.atime = self.sensor.atime
+            #self.astep = self.sensor.astep
             
+            # Set predefined exposure times
+            self.astep_table = [59, 119, 299, 599, 1198, 2997, 5994, 11989, 29975, 53956]
+            # gives exposure times of [1, 2, 5, 10, 20, 50, 100, 200, 500, 900] ms to within 0.1%
+            self.exposure_index = 6  # start at 100 ms
+            
+            # Set default starting parameters independant of sensor object
+            self.atime = 5  #In this example is fixed
+            self.astep = self.astep_table[self.exposure_index]
+            self.sensor.atime = self.atime
+            self.sensor.astep = self.astep
+            self.needs_cooldown = False
+
             # Exposure time in µs
             self.exposure_time = (self.atime + 1) * (self.astep + 1) * 2.78
-
-            self.needs_cooldown = False
 
             self.sensor.led_current = 50
 
@@ -83,16 +93,6 @@ class AdafruitSensorWorker(BasePollingWorker):
             print(f"[{name}] Hardware failure: {e}")
             self.sensor = None
             return
-
-        # Set predefined exposure times
-        self.astep_table = [59, 119, 299, 599, 1198, 2997, 5994, 11989, 29975, 53956]
-        # gives exposure times of [1, 2, 5, 10, 20, 50, 100, 200, 500, 900] ms to within 0.1%
-        self.exposure_index = 6  # start at 100 ms
-        
-        # Set default starting parameters independant of sensor object
-        self.atime = 5  #In this example is fixed
-        self.astep = self.astep_table[self.exposure_index]
-        self.needs_cooldown = False
     
     def flash_LED(self, repeats = 1):
             loops = 0

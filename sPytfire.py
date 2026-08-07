@@ -45,6 +45,7 @@ from spytfire.sensor.apogee import ApogeeSensorWorker
 #from spytfire.sensor.bme import BMESensorWorker
 from spytfire.sensor.bme_adafruit import BMESensorWorker
 from spytfire.sensor.gas import GasSensorWorker
+from spytfire.sensor.gas_4AFE import AFESensorWorker
 from spytfire.sensor.opc import OPCSensorWorker
 from spytfire.sensor.spectrometer import SpecWorker
 from spytfire.sensor.spn1 import SPN1SensorWorker
@@ -83,6 +84,7 @@ SENSOR_TYPE_TO_WORKER = {
     'alpha_opc' : OPCSensorWorker,
     'spec'      : SpecWorker,
     'alpha_gas' : GasSensorWorker,
+    'alpha_afe' : AFESensorWorker,
     'fake_spec' : DummySpecWorker
 }
 

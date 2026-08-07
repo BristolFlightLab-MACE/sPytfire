@@ -99,6 +99,7 @@ class OPCSensorWorker(BasePollingWorker):
         spi.mode = 1
         spi.max_speed_hz = 500000
         spi.lsbfirst = False
+        self.spi = spi
 
         try:
             self.sensor = opc.detect(spi)
@@ -169,7 +170,7 @@ class OPCSensorWorker(BasePollingWorker):
                 # Disables both the internal 658nm laser and the sample fan safely
                 self.sensor.off()
                 print(f"[{self.name}] Laser and Fan powered down successfully.")
-                self.sensor.close()
+                self.spi.close()
             except Exception as shutdown_err:
                 print(f"[{self.name}] Hard hardware control failed: {shutdown_err}")
         else:

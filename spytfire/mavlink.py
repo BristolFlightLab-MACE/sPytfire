@@ -47,12 +47,11 @@ class MavlinkWorker(BaseWorker):
             self.mav_conn = mavutil.mavlink_connection(self.connection_str,baud=57600)
             print(f"MAVLink listening on {self.connection_str}")
 
-            self.name = name
-            self.recording = True
-            self.initialized = True
-
         except Exception as e:
             print(f"[-] MAVLink Error: {e}")
+
+        self.recording = True
+        self.initialized = True
 
     def start_work(self):
 

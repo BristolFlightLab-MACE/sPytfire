@@ -29,13 +29,15 @@ from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
 # Create new SensorWorker for controlling alphasense gas sensors
 # =============================================================================
 
-class GasSensorWorker(BasePollingWorker):
+class AFESensorWorker(BasePollingWorker):
     data_ready = Signal(str, str, dict)
     
     def __init__(self, name, serial_num = None, address = None, interval_ms=100, mux=None):
         """
         Simulate a completed BasePollingWorker to demonstrate how a sensor
         worker can interface with the base class.
+
+        CAN BE MERGED INTO GASSENSORWORKER
 
         Parameters
         ----------
@@ -89,9 +91,10 @@ class GasSensorWorker(BasePollingWorker):
 
         # Your specific sensor logic here
         data = {'mvolt': mvolt,
+                'name' : 'O3',
                 'conc' : conc,
                 'timestamp' : self.timestamp()}
-        self.data_ready.emit(self.name, 'gas', data)
+        self.data_ready.emit(self.name, 'alpha_gas', data)
 
     def _safe_shutdown(self,reason="Unknown Error"):   
         if reason != ("User Interrupt (Ctrl+C)"):

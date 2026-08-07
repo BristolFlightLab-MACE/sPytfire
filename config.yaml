@@ -66,3 +66,9 @@ sensors:
     type: alpha_gas
     address: [2,0x48]
     interval: 1000
+
+  O3:
+    serial_num: [OX-A431]
+    type: alpha_afe
+    address: [2,0x49]
+    interval: 1000
