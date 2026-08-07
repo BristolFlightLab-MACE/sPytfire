@@ -3,8 +3,12 @@
 Created on Tue Mar 31 13:00:08 2026
 
 @author: Matt Varnam
-@email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
+@email: matt(dot)varnam
 """
+# =============================================================================
+# Define imports
+# =============================================================================
+
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, Signal, Slot, QCoreApplication, Qt
 
@@ -14,13 +18,18 @@ from spytfire.base import BaseWorker
 # Import python mavlink
 import pymavlink.mavutil as mavutil
 
+# =============================================================================
+# Create new BaseWorker for monitoring the MAVlink connection
+# =============================================================================
+
 class MavlinkWorker(BaseWorker):
-    #data_ready = Signal(str, dict)
+    '''Class to read the MAVlink connection and emit data to the controller.'''
+    data_ready = Signal(str, str, dict)
     recording_trigger = Signal(bool)
     uas_time_updated  = Signal('qint64')
 
     def __init__(self, connection_str, channel_num = 11, name="MAVLink"):
-        super().__init__(name)
+        super().__init__(name,serial_num=None,address=None,interval_ms=None)
         
         # Identify the name of the MAVLINK channel from the input number
         channel_dict = {i: f'chan{i}_raw' for i in range(1, 19)}
@@ -32,46 +41,58 @@ class MavlinkWorker(BaseWorker):
         
         self.connection_str = connection_str
         self.channel_name = channel_name
-        self.name = name
-        self.recording = True
-        self.initialized = True
 
-    def start_work(self):
         try:
             # 1. Initialize connection
             self.mav_conn = mavutil.mavlink_connection(self.connection_str,baud=57600)
             print(f"MAVLink listening on {self.connection_str}")
 
-            # 2. Continuous Read Loop
-            while self.initialized:
-                # blocking=True with a timeout lets the CPU rest 
-                # without using Qt Timer.
-                msg = self.mav_conn.recv_match(type=['SYSTEM_TIME','RC_CHANNELS','TIMESYNC'],
-                                             blocking=True, timeout=0.1)
-                
-                if msg:
-                    self.handle_message(msg)
-
         except Exception as e:
             print(f"[-] MAVLink Error: {e}")
-            
-        finally:
-            # Safely close only if self.parent was successfully initialized
-            if hasattr(self, 'mav_conn') and self.mav_conn is not None:
+
+        self.recording = True
+        self.initialized = True
+
+    def start_work(self):
+
+            # Continuous Read Loop
+            while self.initialized:
                 try:
-                    self.mav_conn.close()
-                except Exception as close_error:
-                    print(f"[-] Error closing MAVLink connection: {close_error}")
+                    # blocking=True with a timeout lets the CPU rest 
+                    # without using Qt Timer.
+                    msg = self.mav_conn.recv_match(type=['SYSTEM_TIME','RC_CHANNELS','TIMESYNC'],
+                                                    blocking=True, timeout=0.1)
+                
+                    if msg:
+                        self.handle_message(msg)
+                
+                except Exception as e:
+                    self._safe_shutdown(reason=f"MAVLink Error: {e}")
 
     def handle_message(self, msg):
         """Filter and emit only the data required. Included placeholders."""
         m_type = msg.get_type()
         
+        # Readout the MAVLINK messagetype and match it to message types of interest
         match m_type:
             #case 'HEARTBEAT':                                    #msg_type   0
             #    pass
             case 'SYSTEM_TIME':                                   #msg_type   2
                 self.uas_time_updated.emit(msg.time_unix_usec)
+            case 'GLOBAL_POSITION_INT':                           #msg_type  33
+                data_dict = {'lat': msg.lat,
+                             'lon': msg.lon,
+                             'alt': msg.alt,
+                             'vehicle_timestamp': msg.time_boot_ms,
+                             'timestamp': self.timestamp()}
+                self.data_ready.emit('GPS', 'gps', data_dict)
+            case 'ATTITUDE':                                      #msg_type  30
+                data_dict = {'roll': msg.roll,
+                             'pitch': msg.pitch,
+                             'yaw': msg.yaw,
+                             'vehicle_timestamp': msg.time_boot_ms,
+                             'timestamp': self.timestamp()}
+                self.data_ready.emit('IMU', 'attitude', data_dict)
             case 'RC_CHANNELS':                                   #msg_type  35
                 channel_value = getattr(msg, self.channel_name, 1500)
                 if channel_value == 0:
@@ -81,10 +102,11 @@ class MavlinkWorker(BaseWorker):
                     self.set_recording_state(True, "Payload recording Started")
                                              
                 elif channel_value < 1200 and self.recording:
-                    self.set_recording_state(False, "Payload recording Stopped")
-                                        
+                    self.set_recording_state(False, "Payload recording Stopped")                          
             #case 'TIMESYNC':                                      #msg_type 111
             #    pass
+            case 'HIL_STATE_QUATERNION':                           #msg_type 115
+                msg.true_airspeed
 
     def set_recording_state(self, state, status_text):
             """Helper to deduplicate statustext packet transmissions."""
@@ -95,4 +117,16 @@ class MavlinkWorker(BaseWorker):
                     mavutil.mavlink.MAV_SEVERITY_INFO,
                     status_text.encode('utf-8')
             )
-    
+                
+    def _safe_shutdown(self, reason="Unknown Error"):
+        if reason != ("User Interrupt (Ctrl+C)"):
+            print(f"\n[CRITICAL ERROR] Initiating Safe Shutdown for {self.name}!")
+            print(f"Reason: {reason}")
+            
+        if hasattr(self, 'mav_conn') and self.mav_conn is not None:
+            try:
+                self.mav_conn.close()
+            except Exception as close_error:
+                print(f"[-] Error closing MAVLink connection: {close_error}")
+            
+        self.initialized = False

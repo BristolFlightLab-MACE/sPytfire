@@ -3,14 +3,14 @@
 Created on Tue Mar 31 11:39:00 2026
 
 @author: Matt Varnam
-@email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
+@email: matt(dot)varnam
 """
+# =============================================================================
+# Define imports
+# =============================================================================
 
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, Signal, Slot, QTimer, QCoreApplication, Qt
-
-# Import random to provide random inputs for the demonstration SensorWorker
-import random
 
 # Provides some useful time options
 from datetime import datetime, timezone
@@ -18,14 +18,18 @@ from datetime import datetime, timezone
 # Allow timestamping immediately upon data acquisition
 import time
 
+# Import random to provide random inputs for the demonstration
+import random
+
 class BaseWorker(QObject):
     finished = Signal()
     stop_requested = Signal()
 
-    def __init__(self, name):
+    def __init__(self, name, serial_num = None, address = None, interval_ms = None):
         super().__init__()
         self.initialized = False
         self.name = name
+        self.serial_num = serial_num
         
         # Force QueuedConnection so the stop() slot runs on the worker thread
         self.stop_requested.connect(self.stop_work, type=Qt.QueuedConnection)
@@ -33,7 +37,11 @@ class BaseWorker(QObject):
     """Override this in subclasses!"""
     def start_work(self):
         raise NotImplementedError()
-        
+    
+    def timestamp(self):
+        """Returns the current time in nanoseconds from the connected."""
+        return time.monotonic_ns()
+
     @Slot()
     def stop_work(self):
         pass
@@ -45,21 +53,23 @@ class BaseWorker(QObject):
         
         self.initialized = False
 
+    @property
+    def is_initialized(self):
+        """Safe read-only access for the main thread."""
+        return self.initialized
+
 class BasePollingWorker(BaseWorker):
     """Handles workers that require a constant heartbeat timer (Sensors)."""
-    def __init__(self, name, interval_ms=100):
-        super().__init__(name)
-        self.interval_ms = interval_ms
+    def __init__(self, name, serial_num = None, address = None, interval_ms=100):
+        super().__init__(name=name, serial_num=serial_num, address=address, interval_ms=None)
         self.timer = None
+        self.interval_ms = interval_ms
 
     def start_work(self):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.process)
         self.destroyed.connect(self.timer.deleteLater)
         self.timer.start(self.interval_ms)
-        
-    def timestamp(self):
-        return time.monotonic_ns()
         
     def process(self):
         raise NotImplementedError("Subclasses must implement process()")
@@ -72,17 +82,43 @@ class BasePollingWorker(BaseWorker):
 
 # This is the basic structure of a SensorWorker
 class SensorWorker(BasePollingWorker):
-    data_ready = Signal(str, dict)
+    data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, interval_ms=100):
-        # Pass shared variables to BaseWorker
-        super().__init__(name, interval_ms)
+    def __init__(self, name, serial_num = None, address = None, interval_ms=100):
+        """
+        Simulate a completed BasePollingWorker to demonstrate how a sensor
+        worker can interface with the base class.
+
+        Parameters
+        ----------
+        name : string
+            A unique ID for the specific sensor in use. Set to be the
+            serial number if available
+        interval_ms : int, optional (Default is 100 ms)
+            Provided the repolling time between each measurement start
+
+        Attributes
+        ----------
+        is_initialized : bool
+            Value that can be read outside the class to monitor the connection
+        
+        Emits
+        ----------
+        data_ready : dictionary
+            A dictionary object containing a randomly generated number and the 
+            sensor payload computer timestamp
+
+        """   
+        # Pass shared variables to BasePollingWorker
+        super().__init__(name=name, serial_num=serial_num, address=address, interval_ms=interval_ms)
+
         self.initialized = True
 
     def process(self):
         # Your specific sensor logic here
-        data = {'value': random.random()}
-        self.data_ready.emit(self.name, data)
+        data = {'value': random.random(),
+                'timestamp' : self.timestamp()}
+        self.data_ready.emit(self.name, 'default', data)
         
 # ---------------- Time Worker ----------------
 # The Time Worker
@@ -90,7 +126,6 @@ class UASWorker(BaseWorker):
     data_ready = Signal(str)
     
     def __init__(self, name):
-        # We pass interval_ms up, but we won't use it
         super().__init__(name)
         self.initialized = True
 
@@ -103,6 +138,6 @@ class UASWorker(BaseWorker):
             return
         
         if dt.year >= 2025:
-            time_string = dt.strftime('%H:%M:%S.%f')
+            time_string = dt.strftime('%Y-%m-%d %H:%M:%S.%f')
             # Directly emit the time update from Mavlink to sPytfire main
             self.data_ready.emit(time_string)

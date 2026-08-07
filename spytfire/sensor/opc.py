@@ -3,7 +3,7 @@
 Created on Tue May 26 20:22:47 2026
 
 @author: Matt Varnam
-@email: matt(dot)varnam(at)bristol(dot)ac(dot)uk
+@email: matt(dot)varnam
 """
 # =============================================================================
 # Define imports
@@ -15,11 +15,14 @@ from spytfire.base import BasePollingWorker
 # Import Signal from PySide to allow the workers to send signals
 from PySide6.QtCore import Signal
 
-# Key imports for running alphasense OPC using SPI interface
+# Key imports for running alphasense OPC using USB interface
 from usbiss.spi import SPI
 
-# This module is needed if running alphasense OPC using USB interface
-#import spidev
+try:
+    # This module is needed if running alphasense OPC using SPI interface
+    import spidev
+except ModuleNotFoundError:
+    print("spidev not found: Install if on Linux")
 
 import serial
 
@@ -31,46 +34,96 @@ import time
 # =============================================================================
 # Create new SensorWorker for the alphasense OPC-N3
 # =============================================================================
-class OPCSensorWorker(BasePollingWorker):
-    data_ready = Signal(str, dict)
-    
-    def __init__(self, name, interval_ms=200):
-        
-        # Pass shared variables to BaseWorker
-        super().__init__(name, interval_ms)
-        
-        try:
-            spi = SPI('/dev/ttyACM0')
-            #spi = SPI('COM10')
-            spi.mode = 1
-            spi.max_speed_hz = 500000
-            spi.lsbfirst = False
 
-            self.dev = opc.detect(spi)
-                        
-            self.dev.on()
-            
-        except (NameError, ValueError, serial.SerialException) as e:
-            print(f"[{name}] Hardware failure: {e}")
-            
-            if hasattr(self,'dev'):
-                self.dev.off()
-                
-            self.sensor = None
-            
-            return
+class OPCSensorWorker(BasePollingWorker):
+    '''Class to read the alphasense OPC-N3 and emit it to the controller.'''
+    data_ready = Signal(str, str, dict)
+    
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200, mux=None):
+        """
+        A BasePollingWorker to connect and operate an alphasense OPC-N3
+        optical particle counter to measure the size distribution of 
+        aerosol and ash particles in a volcanic plumes.
+
+        Parameters
+        ----------
+        name : string
+            A unique ID for the specific sensor in use
+        interval_ms : int, optional (Default is 200 ms)
+            Provided the repolling time between each measurement start
+
+        Attributes
+        ----------
+        sensor : 
+            The OPC-N3 connection is held by this attribute
+        is_initialized : bool
+            Value that can be read outside the class to monitor the connection
         
+        Emits
+        ----------
+        data_ready : dictionary
+            A dictionary object containing information on the current status
+            of the opc-n3, all particle size bins and PM2.5 and PM10 
+            measurements, and a timestamp from the sensor payload computer
+
+        """   
+        
+        # Pass shared variables to BasePollingWorker
+        super().__init__(name, serial_num, address, interval_ms)
+        
+        # Initialise as None to let code check for connection
+        spi = None
+
+        # First, try spi connection
+        try:
+            spi = spidev.SpiDev()
+            spi.open(0, 0)
+        except Exception as e:
+            print(f"[{name}] OPC SPI setup failed: {e}")
+            self.initialized = False
+            self.sensor = None
+            return
+
+        if spi is None:
+            try:
+                # Two options depending on whether usb or spi connection is used
+                spi = SPI('/dev/ttyACM0')
+
+            except Exception as e:
+                print(f"[{name}] OPC USB setup failed: {e}")
+                self.initialized = False
+                self.sensor = None
+                return
+
+        # Return to common code
+        spi.mode = 1
+        spi.max_speed_hz = 500000
+        spi.lsbfirst = False
+        self.spi = spi
+
+        try:
+            self.sensor = opc.detect(spi)
+            self.sensor.on()
+        except Exception as e:
+            print(f"[{name}] OPC USB setup failed: {e}")
+            self.initialized = False
+            self.sensor = None
+            return
+            
         # Track hardware error states
         self.consecutive_failures = 0
         self.MAX_ALLOWED_FAILURES = 5  # Shut down after ~5 failed attempts
         
         time.sleep(0.6)                # Recommended 600 ms before measurements
+
+        # Probe once so a missing/quiet sensor is detected immediately.
+        self.sensor.histogram()
         
         self.initialized = True
     
     def process(self):
         try:                
-            values = self.dev.histogram()
+            values = self.sensor.histogram()
             
             # Create full list of parameters
             channels = {f'bin{i}': values[f'Bin {i}'] for i in range(24)}
@@ -85,7 +138,7 @@ class OPCSensorWorker(BasePollingWorker):
             channels['laser_status'] = values['Laser status']
             channels['timestamp'] = self.timestamp()
             
-            self.data_ready.emit(self.name, channels)
+            self.data_ready.emit(self.name, 'alpha_opc', channels)
             self.consecutive_failures = 0
         
         except (KeyError, ValueError) as data_err:
@@ -97,14 +150,11 @@ class OPCSensorWorker(BasePollingWorker):
                 self._safe_shutdown(reason="Repeated Data Corruption/Key Errors")
         
         except Exception as hardware_err:
-            print(f"OPC Read Error: {hardware_err}")
-            
             self.consecutive_failures += 1
-            
-            print(f"[{self.name}] SPI Hardware Error ({self.consecutive_failures}/{self.MAX_ALLOWED_FAILURES}): {hardware_err}")
+            print(f"[{self.name}] OPC read failed ({self.consecutive_failures}/{self.MAX_ALLOWED_FAILURES}): {hardware_err}")
             
             if self.consecutive_failures >= self.MAX_ALLOWED_FAILURES:
-                self.safe_shutdown(reason="Repeated Data Corruption/Key Errors")
+                self._safe_shutdown(reason="Repeated OPC read failures")
     
                 
     def _safe_shutdown(self, reason="Unknown Error"):
@@ -115,12 +165,12 @@ class OPCSensorWorker(BasePollingWorker):
             print(f"\n[CRITICAL ERROR] Initiating Safe Shutdown for {self.name}!")
             print(f"Reason: {reason}")
         
-        if hasattr(self, 'dev') and self.dev is not None:
+        if hasattr(self, 'sensor') and self.sensor is not None:
             try:
                 # Disables both the internal 658nm laser and the sample fan safely
-                self.dev.off()
+                self.sensor.off()
                 print(f"[{self.name}] Laser and Fan powered down successfully.")
-                self.dev.close()
+                self.spi.close()
             except Exception as shutdown_err:
                 print(f"[{self.name}] Hard hardware control failed: {shutdown_err}")
         else:
