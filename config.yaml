@@ -72,3 +72,9 @@ sensors:
   #  type: alpha_afe
   #  address: [2,0x49]
   #  interval: 1000
+
+  #H2S:
+  #  serial_num: [H2S-A4F]
+  #  type: alpha_gas?
+  #  address: [2,0x49]
+  #  interval: 1000

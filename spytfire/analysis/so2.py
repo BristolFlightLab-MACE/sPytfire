@@ -14,15 +14,9 @@ moved back to a worker to avoid potential freezing of the main thread.
 # Import Signal from PySide to allow the workers to send signals
 from PySide6.QtCore import QObject, Slot, Signal
 
-# datetime for interpreting and formatting the time and date
-from datetime import datetime
-
 # Load other libraries
-from pathlib import Path
-import os
 import time
 import numpy as np
-
 
 from ifit.load_spectra import average_spectra
 from ifit.spectral_analysis import Analyser

@@ -74,13 +74,12 @@ with open('config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
 if config is None:
-    print("[!] No configuration found in config.yaml. Using default configuration.")
-    config = {}
+    raise ValueError("config.yaml is invalid format or does not exist. Please provide a valid configuration file.")
 
 if config.get('sensors') is None:
-    print("[!] No sensor configuration found in config.yaml. Using default configuration.")
-    config['sensors'] = {}
-    config['sensors']['Default'] = {'serial_num': None, 'type': 'default', 'address': None, 'interval': 1000}
+    raise ValueError("No sensor configuration found in config.yaml. Please provide a valid configuration file.")
+    #config['sensors'] = {}
+    #config['sensors']['Default'] = {'serial_num': None, 'type': 'default', 'address': None, 'interval': 1000}
 
 sensor_config = config['sensors']
 
