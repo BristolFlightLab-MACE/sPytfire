@@ -56,7 +56,15 @@ class BMESensorWorker(BasePollingWorker):
         super().__init__(name, serial_num, address, interval_ms)
         
         try:
+
             channel, i2caddress = address
+
+            devices = mux[channel].scan()
+
+            if i2caddress not in devices:
+                raise RuntimeError(
+                    f"No BME280 at channel {channel}:0x{i2caddress:02X}"
+                )
 
             self.sensor = adafruit_bme280.Adafruit_BME280_I2C(
                 mux[channel],

@@ -1,11 +1,11 @@
 # Design the sensor configuration to be attempted. Note
 # that unsuccessful sensor processes will be aborted.
 sensors:
-  #AdaFruit:
-  #  serial_num: null
-  #  type: ada_as7341
-  #  address: [1,0x39]
-  #  interval: 2000
+  AdaFruit:
+    serial_num: null
+    type: ada_as7341
+    address: [1,0x39]
+    interval: 2000
 
   #BME280:
   #  serial_num: null
