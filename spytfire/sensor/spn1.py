@@ -18,7 +18,7 @@ from spytfire.base import BasePollingWorker
 # Import Signal from PySide to allow the workers to send signals
 from PySide6.QtCore import Signal
 
-# Import numpy for calculating the longwave and shortwave results from the 
+# Import numpy for calculating the longwave and shortwave results from the
 # apogee sensors
 import numpy as np
 
@@ -35,7 +35,7 @@ import time
 class SPN1SensorWorker(BasePollingWorker):
     '''Class to read the Delta-T SPN1 and emit it to the controller.'''
     data_ready = Signal(str, str, dict)
-    
+
     def __init__(self, name, serial_num = None, address = None, interval_ms=200, mux=None):
         """
         A BasePollingWorker to connect and operate a delta-T SPN1
@@ -51,7 +51,7 @@ class SPN1SensorWorker(BasePollingWorker):
 
         Attributes
         ----------
-        sensor : 
+        sensor :
             The SPN1 connection is held by this attribute
         is_initialized : bool
             Value that can be read outside the class to monitor the connection
@@ -63,13 +63,15 @@ class SPN1SensorWorker(BasePollingWorker):
             irradiation measured by the spn1, a determined 'cloudiness' boolean
             and the sensor payload computer timestamp
 
-        """   
-        
+        """
+
         # Pass shared variables to BasePollingWorker
         super().__init__(name, serial_num, address, interval_ms)
-        
+
         #PORT = 'COM5'                        # port when connected to my laptop
-        PORT = "/dev/ttyUSB0"                 # port when connected to pi  
+        #PORT = "/dev/ttyUSB0"                 # port when connected to pi
+        PORT = "/dev/ttyAMA0"                # port when connected to pi via GPIO pins (not sure why 10 here, might be 1 on other pi)
+
         try:
             # Establish Serial connection
             self.sensor = serial.Serial(PORT, 9600, timeout=2)
@@ -121,7 +123,7 @@ class SPN1SensorWorker(BasePollingWorker):
                          'sun_state'    : sun,
                          'case_temp'    : case_t,
                          'timestamp'    : now
-                         }            
+                         }
 
             self.data_ready.emit(self.name, 'spn1', spn1_dict)
             

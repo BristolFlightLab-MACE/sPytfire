@@ -7,11 +7,11 @@ sensors:
     address: [1,0x39]
     interval: 2000
 
-  #BME280:
-  #  serial_num: null
-  #  type: pim_bme280
-  #  address: [1,0x76]
-  #  interval: 500
+  BME280:
+    serial_num: null
+    type: pim_bme280
+    address: [1,0x76]
+    interval: 500
 
   #Pygeo_Up:
   #  serial_num: SL510_1729
