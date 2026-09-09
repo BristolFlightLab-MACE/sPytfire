@@ -6,8 +6,6 @@ Created on Tue May 26 20:22:47 2026
 @email: matt(dot)varnam
 """
 # =============================================================================
-# Define imports
-# =============================================================================
 
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
 from spytfire.base import BasePollingWorker
@@ -24,33 +22,33 @@ try:
 except ModuleNotFoundError:
     print("spidev not found: Install if on Linux")
 
-import serial
-
 # Libary for operating alphasense OPC
 import opcng as opc
 
 import time
 
 # =============================================================================
-# Create new SensorWorker for the alphasense OPC-N3
-# =============================================================================
 
 class OPCSensorWorker(BasePollingWorker):
     '''Class to read the alphasense OPC-N3 and emit it to the controller.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, address = None, interval_ms=200, mux=None):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200, i2cbus=None):
         """
-        A BasePollingWorker to connect and operate an alphasense OPC-N3
-        optical particle counter to measure the size distribution of 
-        aerosol and ash particles in a volcanic plumes.
+        Connect to and operate an Alphasense OPC-N3 optical particle counter.
 
         Parameters
         ----------
         name : string
-            A unique ID for the specific sensor in use
-        interval_ms : int, optional (Default is 200 ms)
-            Provided the repolling time between each measurement start
+            Unique identifier for the sensor instance.
+        serial_num : string, optional
+            Device serial number, if available. Not used by this sensor.
+        address : object, optional
+            Device interface address, if applicable.
+        interval_ms : int, optional
+            Polling interval between measurements, in milliseconds.
+        i2cbus : object, optional
+            Accepted for the shared worker interface; OPC-N3 uses SPI or USB.
 
         Attributes
         ----------
@@ -61,10 +59,8 @@ class OPCSensorWorker(BasePollingWorker):
         
         Emits
         ----------
-        data_ready : dictionary
-            A dictionary object containing information on the current status
-            of the opc-n3, all particle size bins and PM2.5 and PM10 
-            measurements, and a timestamp from the sensor payload computer
+        data_ready : dict
+            OPC status, particle-size bins, PM2.5, PM10, and timestamp.
 
         """   
         
@@ -78,8 +74,8 @@ class OPCSensorWorker(BasePollingWorker):
         try:
             spi = spidev.SpiDev()
             spi.open(0, 0)
-        except Exception as e:
-            print(f"[{name}] OPC SPI setup failed: {e}")
+        except Exception as exc:
+            print(f"[{name}] OPC SPI setup failed: {exc}")
             self.initialized = False
             self.sensor = None
             return
@@ -89,8 +85,8 @@ class OPCSensorWorker(BasePollingWorker):
                 # Two options depending on whether usb or spi connection is used
                 spi = SPI('/dev/ttyACM0')
 
-            except Exception as e:
-                print(f"[{name}] OPC USB setup failed: {e}")
+            except Exception as exc:
+                print(f"[{name}] OPC USB setup failed: {exc}")
                 self.initialized = False
                 self.sensor = None
                 return
@@ -104,8 +100,8 @@ class OPCSensorWorker(BasePollingWorker):
         try:
             self.sensor = opc.detect(spi)
             self.sensor.on()
-        except Exception as e:
-            print(f"[{name}] OPC USB setup failed: {e}")
+        except Exception as exc:
+            print(f"[{name}] OPC USB setup failed: {exc}")
             self.initialized = False
             self.sensor = None
             return
@@ -136,7 +132,7 @@ class OPCSensorWorker(BasePollingWorker):
             channels['pm10']  = values['PM10']
             channels['sfr']   = values['SFR']
             channels['laser_status'] = values['Laser status']
-            channels['timestamp'] = self.timestamp()
+            channels['timestamp_ns'] = self.timestamp()
             
             self.data_ready.emit(self.name, 'alpha_opc', channels)
             self.consecutive_failures = 0

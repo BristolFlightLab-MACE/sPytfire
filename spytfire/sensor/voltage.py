@@ -9,86 +9,83 @@ sensors. It's structure is very similar to the analogue apogee sensor structure
 @email: matt(dot)varnam
 """
 # =============================================================================
-# Define imports
-# =============================================================================
+
+from dataclasses import dataclass, asdict
 
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
 from spytfire.base import BasePollingWorker
 
 # Import Signal from PySide to allow the workers to send signals
 from PySide6.QtCore import Signal
-    
+
 from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
 
 # =============================================================================
-# Create new SensorWorker for the internal voltage ADS1115
-# =============================================================================
+
+@dataclass(frozen=True)
+class VoltageSample:
+    """A simple container for a single voltage sample."""
+    voltage_v: float
+    timestamp_ns: int
 
 class VoltageSensorWorker(BasePollingWorker):
     '''Class to read the excitation voltage from the ADC and emit it to the controller.'''
     data_ready = Signal(str, str, dict)
-    
-    def __init__(self, name, serial_num = None, address = None, interval_ms=200, mux=None):
+
+    def __init__(self, name, serial_num=None, address=None, interval_ms=200, i2cbus=None):
         """
-        A BasePollingWorker that replicates the structure of
-        apogee_sensor.py to use an adafruit ADS1115 to measure the 
-        differential voltage that is placed across apogee longwave
-        sensors.
+        A BasePollingWorker that uses an Adafruit ADS1115 to measure the
+        differential voltage placed across the Apogee longwave sensors.
 
         Parameters
         ----------
         name : string
-            A unique ID for the specific sensor in use
-        interval_ms : int, optional (Default is 200 ms)
-            Provided the repolling time between each measurement start
+            Unique identifier for the sensor instance.
+        serial_num : string, optional
+            Device serial number, if available. Not used by this sensor.
+        address : tuple
+            (mux_channel, i2c_address) for the ADS1115.
+        interval_ms : int, optional
+            Polling interval between measurements, in milliseconds.
+        i2cbus : object, optional
+            The multiplexer bus object that exposes the per-channel I2C bus.
 
-        Attributes
-        ----------
-        sensor : 
-            The Adafruit ADS1115 I2C connection is held by this attribute
-        is_initialized : bool
-            Value that can be read outside the class to monitor the connection
-        
         Emits
         ----------
-        data_ready : dictionary
-            A dictionary object containing the sensor payload computer 
-            timestamp and the differential voltage across the apogee sensors
+        data_ready : dict
+            A dictionary containing the measurement in volts and the acquisition
+            timestamp from the local monotonic clock.
+        """
+        super().__init__(name=name, serial_num=serial_num, address=address, interval_ms=interval_ms)
 
-        """   
-        
-        # Pass shared variables to BasePollingWorker
-        super().__init__(name, serial_num, address, interval_ms)
-        
-        try:
-            channel, i2caddress = address
-            
-            # Create the ADC object using the I2C bus
-            self.ads = ADS1115(mux[channel],address = i2caddress)
-        
-        except (NameError, ValueError, OSError, AttributeError, TypeError) as e:
-            print(f"[{name}] Hardware failure: {e}")
-            self.sensor = None
-            return
-            
-        # Create differential input between channel 0 and 1
-        self.chan0 = AnalogIn(self.ads, ads1x15.Pin.A0, ads1x15.Pin.A1)
-        
-        # Isolate the name of the device so that the calibration coefficents
-        # can be used
+        self.ads = None
+        self.chan0 = None
         self.model = name
-        
-        self.initialized = True
-        
-    def process(self):
+        self.initialized = False
+
         try:
-            v0 = self.chan0.voltage
-            
-            voltage_dict = {'excite_v': v0,
-                            'timestamp': self.timestamp()
-                          }
-            
-            self.data_ready.emit(self.name, 'voltage', voltage_dict)
-            
-        except Exception as e:
-            print(f"Voltage Read Error: {e}")
+            _ , i2caddress = address
+            self.ads = ADS1115(i2cbus, address=i2caddress)
+            self.chan0 = AnalogIn(self.ads, ads1x15.Pin.A0, ads1x15.Pin.A1)
+            self.initialized = True
+
+        except (NameError, ValueError, OSError, AttributeError, TypeError) as exc:
+            print(f"[{name}] Hardware failure: {exc}")
+            self.ads = None
+            self.chan0 = None
+            self.initialized = False
+
+    def process(self):
+        if not self.initialized or self.chan0 is None:
+            return
+
+        try:
+            sample = VoltageSample(
+                excite_v=float(self.chan0.voltage),
+                timestamp_ns=self.timestamp(),
+            )
+
+            self.data_ready.emit(self.name, 'voltage', asdict(sample))
+
+        except Exception as exc:
+            print(f"Voltage Read Error: {exc}")

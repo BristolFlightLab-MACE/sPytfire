@@ -7,8 +7,8 @@ Need to implement an automatic dark acquisition
 @email: matt(dot)varnam
 """
 # =============================================================================
-# Define imports
-# =============================================================================
+
+from dataclasses import dataclass, asdict
 
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
 from spytfire.base import BaseWorker
@@ -34,37 +34,40 @@ import numpy as np
 # Allow timestamping immediately upon data acquisition
 import time
 
-# =============================================================================
-# Create new BaseWorker for the avaspec spectrometers
+@dataclass(frozen=True)
+class SpecSample:
+    """A simple container for a single spectrometer radiometer sample."""
+    wavelength: list
+    spectraldata: list
+    serial_number: str
+    coadds: int
+    integration_time: int
+    timestamp: int
+    dark_correction: None
+    nonlin_correction: None
+
 # =============================================================================
 
 class SpecWorker(BaseWorker):
     '''Class to operate an Avaspec spectrometer and emit data to Controller.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, address = None, interval_ms = None, mux=None):
+    def __init__(self, name, serial_num = None, address = None, interval_ms = None, i2cbus=None):
         """
-        Operates an Avaspec Nexos spectrometer using the
-        BaseWorker class. 
-        
-        ***Code structure may change to more easily substitute different
-        spectrometers
+        Operate an Avaspec Nexos spectrometer using BaseWorker.
 
         Parameters
         ----------
         name : string
-            A unique ID for the specific sensor in use
+            Unique identifier for the sensor instance.
         serial_num : string, optional
-            The serial number of the device to connect to. Not needed
-            in this class but required for BaseWorker.
+            Serial number of the device to connect to, if available.
         address : string, optional
-            The address of the device to connect to. Not needed
-            in this class but required for BaseWorker.
+            Device address, if applicable.
         interval_ms : string, optional
-            The interval at which to acquire data. Not needed
-            in this class but required for BaseWorker.
-        mux : string, optional
-            The i2c bus required for other devices. Not needed here.
+            Acquisition interval in milliseconds, if applicable.
+        i2cbus : string, optional
+            I2C multiplexer, if applicable. Not used by this worker.
         
         Attributes
         ----------
@@ -76,10 +79,8 @@ class SpecWorker(BaseWorker):
 
         Emits
         ----------
-        data_ready : dictionary
-            A dictionary object containing the full spectrum measured by
-            the spectrometer as well as the timestamp recorded by the
-            sensor payload computer
+        data_ready : dict
+            The full measured spectrum and acquisition metadata.
 
         """      
                 
@@ -212,8 +213,8 @@ class SpecWorker(BaseWorker):
         self.acquire_darks()
 
         while self.initialized:
-            data = self.get_spectrum()
-            self.data_ready.emit(self.name, 'spec', data)
+            sample = self.get_spectrum()
+            self.data_ready.emit(self.name, 'spec', asdict(sample))
             self.update_interval()
 
     def update_interval(self):
@@ -296,17 +297,18 @@ class SpecWorker(BaseWorker):
 
         self.spectraldata = y
 
-        # Your specific sensor logic here
-        data = {'x': self.wavelength,
-                'y': self.spectraldata,
-                'serial_number': self.serial_number,
-                'integration_time': int(self.measconfig.m_IntegrationTime),
-                'coadds': self.measconfig.m_NrAverages,
-                'timestamp': timestamp,
-                'dark_correction': None,
-                'nonlin_correction': None}
-        
-        return(data)
+        sample = SpecSample(
+            wavelength=x.tolist(),
+            spectraldata=y.tolist(),
+            serial_number=self.serial_number,
+            integration_time=int(self.measconfig.m_IntegrationTime),
+            coadds=int(self.measconfig.m_NrAverages),
+            timestamp_ns=timestamp,
+            dark_correction=None,
+            nonlin_correction=None
+        )
+
+        return(sample)
 
     def measure_cb(self,pparam1, pparam2):
         """Callback function to monitor the measurement"""

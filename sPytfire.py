@@ -33,13 +33,6 @@ connection_str = "udpin:192.168.137.51:14550"
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, QThread, Slot, QTimer, QCoreApplication, Qt, Signal, QEventLoop
 
-try:
-    import board
-except NotImplementedError:
-    print("Hardware not detected. Running in Simulation Mode.")
-
-import adafruit_tca9548a
-
 # Load custom modules containing the workers for each sensor/connection
 from spytfire.sensor.adafruit import AdafruitSensorWorker
 from spytfire.sensor.apogee import ApogeeSensorWorker
@@ -54,7 +47,7 @@ from spytfire.sensor.voltage import VoltageSensorWorker
 from spytfire.sensor.dummy_spectrometer import DummySpecWorker
 
 from spytfire.mavlink import MavlinkWorker
-from spytfire.base import SensorWorker, UASWorker
+from spytfire.base import SensorWorker, UASWorker, I2CManager
 
 from spytfire.logger.console import ConsoleLogger
 from spytfire.logger.file import FileLogger
@@ -134,12 +127,8 @@ class Controller(QObject):
         if self.mav_worker.is_initialized:
             self._add_uas_time()
 
-        # Setup the I2C bus and multiplexing
-        try:
-            i2c = board.I2C()
-            self.mux = adafruit_tca9548a.PCA9546A(i2c)
-        except:
-            self.mux = None
+        # Setup the I2C bus manager and set multiplex to False for now
+        self.i2cbus_manager = I2CManager(multiplex=False)
 
         # Setup Sensors
         for name, info in SENSOR_INFO.items():
@@ -221,22 +210,15 @@ class Controller(QObject):
         if worker_class is SensorWorker:
             print(f"WARNING: Default Worker created for sensor_type '{sensor_type}'")
 
-        if self.mux is not None:
-            worker = worker_class(
-                name=name,
-                serial_num=serial_num,
-                address=address,
-                interval_ms=interval,
-                mux=self.mux,
-            )
-        else:
-            worker = worker_class(
-                name=name,
-                serial_num=serial_num,
-                address=address,
-                interval_ms=interval,
-                mux=None,
-            )
+        self.i2cbus = self.i2cbus_manager.get_channel(address)
+        
+        worker = worker_class(
+            name=name,
+            serial_num=serial_num,
+            address=address,
+            interval_ms=interval,
+            i2cbus=self.i2cbus,
+        )
         
         # Check that the worker has been created, and if not, skip the thread handoff
         if not worker.is_initialized:
@@ -285,10 +267,13 @@ class Controller(QObject):
                     case 'Pyronometer':
                         self.curr_workers.append('Pyro_Up')
                         self.curr_workers.append('Pyro_Down')
+                    case 'CO2_HCl':
+                        self.curr_workers.append('Alpha_HCl')
+                        self.curr_workers.append('Alpha_CO2')
                     case 'UV_Spec':
                         self.curr_workers.append('UV_Spec')
                         self.curr_workers.append('Dark_Spec')
-                        self.curr_workers.append('SO2')
+                        self.curr_workers.append('SO2_Col')
                     case _:
                         self.curr_workers.append(worker.name)
 
@@ -315,6 +300,8 @@ class Controller(QObject):
         for thread in self.threads:
             thread.quit()
             thread.wait(1000)
+
+        self.i2cbus_manager.close()
             
         # Cleanup FileLogger and Console Logger handlers 
         for handler in self.handlers:

@@ -5,8 +5,8 @@ Created on Tue Mar 31 12:04:52 2026
 @email: matt(dot)varnam
 """
 # =============================================================================
-# Define imports
-# =============================================================================
+
+from dataclasses import dataclass, asdict
 
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
 from spytfire.base import BasePollingWorker
@@ -16,26 +16,35 @@ from PySide6.QtCore import Signal
 
 import adafruit_bme280.basic as adafruit_bme280
 
-# =============================================================================
-# Create new SensorWorker for controlling the pimoroni BME280
+@dataclass(frozen=True)
+class BMESample:
+    """A simple container for a single BME280 sample."""
+    temperature: float
+    pressure: float
+    humidity: float
+    timestamp_ns: int
 # =============================================================================
 
 class BMESensorWorker(BasePollingWorker):
     '''Class to read a BME280 and emit the data to the controller.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, address = None, interval_ms=200, mux=None):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200, i2cbus=None):
         """
-        A BasePollingWorker to connect and operate a BME280 environment
-        sensor that measures surrounding temperature, pressure and 
-        humidity.
+        Connect to and operate a BME280 environmental sensor.
 
         Parameters
         ----------
         name : string
-            A unique ID for the specific sensor in use
-        interval_ms : int, optional (Default is 200 ms)
-            Provided the repolling time between each measurement start
+            Unique identifier for the sensor instance.
+        serial_num : string, optional
+            Device serial number, if available. Not used by this sensor.
+        address : tuple
+            ``(mux_channel, i2c_address)`` for the BME280.
+        interval_ms : int, optional
+            Polling interval between measurements, in milliseconds.
+        i2cbus : object, optional
+            I2C multiplexer exposing the selected channel.
 
         Attributes
         ----------
@@ -46,10 +55,8 @@ class BMESensorWorker(BasePollingWorker):
         
         Emits
         ----------
-        data_ready : dictionary
-            A dictionary object containing information on the temperature,
-            pressure and humidity measured as well as the sensor payload 
-            computer timestamp
+        data_ready : dict
+            Temperature, pressure, humidity, and acquisition timestamp.
 
         """     
         # Pass shared variables to BasePollingWorker
@@ -57,22 +64,22 @@ class BMESensorWorker(BasePollingWorker):
         
         try:
 
-            channel, i2caddress = address
+            _ , i2caddress = address
 
-            devices = mux[channel].scan()
+            devices = i2cbus.scan()
 
             if i2caddress not in devices:
                 raise RuntimeError(
-                    f"No BME280 at channel {channel}:0x{i2caddress:02X}"
+                    f"No BME280 at 0x{i2caddress:02X}"
                 )
 
             self.sensor = adafruit_bme280.Adafruit_BME280_I2C(
-                mux[channel],
+                i2cbus,
                 address=i2caddress
             )
 
-        except Exception as e:
-            print(f"[{name}] Hardware failure: {e}")
+        except Exception as exc:
+            print(f"[{name}] Hardware failure: {exc}")
             self.sensor = None
             return
         
@@ -83,18 +90,18 @@ class BMESensorWorker(BasePollingWorker):
         
     def process(self):
         try:
-            ### CURRENT SETUP VULNERABLE TO RACE CONDITIONS
-            bme_dict = {'temperature': self.sensor.temperature,
-                        'pressure': self.sensor.pressure,
-                        'humidity': self.sensor.humidity,
-                        'timestamp': self.timestamp()
-                        }
+            sample = BMESample(
+                temperature=self.sensor.temperature,
+                pressure=self.sensor.pressure,
+                humidity=self.sensor.humidity,
+                timestamp_ns=self.timestamp()
+            )
             
-            self.data_ready.emit(self.name, 'pim_bme280', bme_dict)
+            self.data_ready.emit(self.name, 'pim_bme280', asdict(sample))
             self.consecutive_failures = 0
             
-        except (Exception, RuntimeError) as e:
-            print(f"BME280 Read Error: {e}")
+        except (Exception, RuntimeError) as exc:
+            print(f"BME280 Read Error: {exc}")
             self.consecutive_failures += 1
             
             if self.consecutive_failures >= self.MAX_ALLOWED_FAILURES:

@@ -9,8 +9,7 @@ pygeometers and SP-510 and SP-610 pyronometers
 @email: matt(dot)varnam
 """
 # =============================================================================
-# Define imports
-# =============================================================================
+from dataclasses import dataclass, asdict
 
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
 from spytfire.base import BasePollingWorker
@@ -93,30 +92,46 @@ def calc_shortwave(k, voltage0):
         
     return sw
 
-# =============================================================================
-# Define the worker to monitor Apogee Sensors through an ADS1115
+@dataclass(frozen=True)
+class ApogeeLSample:
+    """A simple container for a single Apogee longwave sample."""
+    voltage0: float
+    voltage1: float
+    sensor_t: float
+    radiative_flux: float
+    excite_v: float
+    timestamp: int
+
+@dataclass(frozen=True)
+class ApogeeSSample:
+    """A simple container for a single Apogee shortwave sample."""
+    voltage: float
+    radiative_flux: float
+    timestamp: int
+
 # =============================================================================
 
 class ApogeeSensorWorker(BasePollingWorker):
     '''Class to read an ADS1115 and interpret the voltages as Apogee signals.'''
     data_ready = Signal(str, str, dict)
     
-    def __init__(self, name, serial_num = None, address = None, interval_ms=200, mux=None):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200, i2cbus=None):
 
         """
-        A BasePollingWorker to connect and operate either 1 or 2
-        components of the Apogee net 4 part net radiometer made from
-        analogue Apogee pyronometers and pyrgeometers.
+        Connect to and operate one or two Apogee radiometer components.
 
         Parameters
         ----------
         name : string
-            A unique ID for the specific sensor in use
-        serial_num : string
-            The specific apogee instrument in use (needed to retrieve
-            calibration coefficients)
-        interval_ms : int, optional (Default is 200 ms)
-            Provided the repolling time between each measurement start
+            Unique identifier for the sensor instance.
+        serial_num : string or list, optional
+            Apogee instrument serial number(s), used for calibration.
+        address : tuple, optional
+            ``(mux_channel, i2c_address)`` for the ADS1115.
+        interval_ms : int, optional
+            Polling interval between measurements, in milliseconds.
+        i2cbus : object, optional
+            I2C multiplexer exposing the selected channel.
 
         Attributes
         ----------
@@ -127,13 +142,8 @@ class ApogeeSensorWorker(BasePollingWorker):
 
         Emits
         ----------
-        data_ready : dictionary
-            A dictionary object containing information on the two
-            analogue channels on the ADS1115 board that can measure the
-            internal temperature of pyrgeometer and the incoming radiation
-            (either shortwave or longwave depending on the instrument).
-            For pyronometers, 2x instruments should be connected to the
-            same ADS1115
+        data_ready : dict
+            Analogue measurements, calculated radiative flux, and timestamp.
         """
         
         # Pass shared variables to BasePollingWorker
@@ -143,10 +153,10 @@ class ApogeeSensorWorker(BasePollingWorker):
             channel, i2caddress = address
             
             # Create the ADC object using the I2C bus
-            self.sensor = ADS1115(mux[channel],address = i2caddress)
+            self.sensor = ADS1115(i2cbus,address = i2caddress)
 
-        except (NameError, ValueError, OSError, AttributeError, TypeError) as e:
-            print(f"[{self.name}] Hardware failure: {e}")
+        except (NameError, ValueError, OSError, AttributeError, TypeError) as exc:
+            print(f"[{self.name}] Hardware failure: {exc}")
             
             if hasattr(self, 'i2c') and self.i2c:
                 try:
@@ -204,16 +214,17 @@ class ApogeeSensorWorker(BasePollingWorker):
                     sensor_type = 'apogee_lu'
                 else:
                     sensor_type = 'apogee_ld'
+
+                sample = ApogeeLSample(
+                    voltage0=v0,
+                    voltage1=v1,
+                    sensor_t=temp,
+                    radiative_flux=longwave,
+                    excite_v=excitation_v,
+                    timestamp_ns=self.timestamp()
+                )
                 
-                apogee_dict = {'voltage0': v0,
-                               'voltage1': v1,
-                               'sensor_t': temp,
-                               'radiative_flux': longwave,
-                               'excite_v': excitation_v,
-                               'timestamp': self.timestamp()
-                              }
-                
-                self.data_ready.emit(self.name, sensor_type, apogee_dict)
+                self.data_ready.emit(self.name, sensor_type, asdict(sample))
             
             elif self.name == 'Pyronometer':
                 
@@ -234,17 +245,21 @@ class ApogeeSensorWorker(BasePollingWorker):
                 
                 timestamp = self.timestamp()
 
-                apogee_dict = {'voltage': v0,
-                               'radiative_flux': shortwave0,
-                               'timestamp': timestamp
-                              }
-                self.data_ready.emit(self.name, 'apogee_su', apogee_dict)
+                sample = ApogeeSSample(
+                    voltage=v0,
+                    radiative_flux=shortwave0,
+                    timestamp_ns=timestamp
+                )
+                
+                self.data_ready.emit(self.name, 'apogee_su', asdict(sample))
 
-                apogee_dict = {'voltage': v1,
-                               'radiative_flux': shortwave1,
-                               'timestamp': timestamp
-                              }
-                self.data_ready.emit(self.name, 'apogee_sd', apogee_dict)
+                sample = ApogeeSSample(
+                    voltage=v1,
+                    radiative_flux=shortwave1,
+                    timestamp_ns=timestamp
+                )
+                
+                self.data_ready.emit(self.name, 'apogee_sd', asdict(sample))
         
             else:
                 _ = self.chan0.voltage      # throw away stale conversion
@@ -270,8 +285,8 @@ class ApogeeSensorWorker(BasePollingWorker):
                 
                 self.data_ready.emit(self.name, data_type, apogee_dict)
             
-        except Exception as e:
-            print(f"Apogee Read Error: {e}")
+        except Exception as exc:
+            print(f"Apogee Read Error: {exc}")
 
     def _safe_shutdown(self,reason="Unknown Error"):   
         if reason != ("User Interrupt (Ctrl+C)"):

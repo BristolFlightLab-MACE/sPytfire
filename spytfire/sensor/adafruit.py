@@ -6,8 +6,8 @@ Created on Tue Mar 31 12:56:52 2026
 @email: matt(dot)varnam(at)
 """
 # =============================================================================
-# Define imports
-# =============================================================================
+
+from dataclasses import dataclass, asdict
 
 # Import the BasePolling Worker from the base module to apply to Apogee sensors
 from spytfire.base import BasePollingWorker
@@ -19,25 +19,44 @@ from PySide6.QtCore import Signal
 
 import time
 
-# =============================================================================
-# Define the worker to connect to Adafruit AS7341 spectrometer
+@dataclass(frozen=True)
+class AdafruitSample:
+    """A simple container for a single simple spectral sample."""
+    channel_415: int
+    channel_445: int
+    channel_480: int   
+    channel_515: int
+    channel_555: int
+    channel_590: int
+    channel_630: int
+    channel_680: int
+    channel_nir: int
+    channel_clr: int
+    exposure_t: float
+    timestamp_ns: int
+
 # =============================================================================
 
 class AdafruitSensorWorker(BasePollingWorker):
     '''Class to read an Adafruit AS7341 10-channel spectrometer.'''
     data_ready = Signal(str, str, dict)
 
-    def __init__(self, name, serial_num = None, address = None, interval_ms=1000, mux=None):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=1000, i2cbus=None):
         """
-        A BasePollingWorker to connect and operate the Adafruit7341 
-        10-channel spectrometer.
+        Connect to and operate an Adafruit AS7341 10-channel spectrometer.
 
         Parameters
         ----------
         name : string
-            A unique ID for the specific sensor in use
-        interval_ms : int, optional (Default is 1000 ms)
-            Provided the repolling time between each measurement start
+            Unique identifier for the sensor instance.
+        serial_num : string, optional
+            Device serial number, if available. Not used by this sensor.
+        address : tuple, optional
+            ``(mux_channel, i2c_address)`` for the AS7341.
+        interval_ms : int, optional
+            Polling interval between measurements, in milliseconds.
+        i2cbus : object, optional
+            I2C multiplexer exposing the selected channel.
 
         Attributes
         ----------
@@ -48,19 +67,15 @@ class AdafruitSensorWorker(BasePollingWorker):
 
         Emits
         ----------
-        data_ready : dictionary
-            A dictionary object containing information on each channel,
-            the current exposure time of the spectrometer and the 
-            current timestamp according to the sensor compute
+        data_ready : dict
+            Channel readings, exposure time, and acquisition timestamp.
 
         """
         # Pass shared variables to BasePollingWorker
         super().__init__(name, serial_num, address, interval_ms)
 
         try:
-            channel, i2caddress = address
-
-            self.sensor = AS7341(mux[channel])
+            self.sensor = AS7341(i2cbus)
             
             self.sensor.gain = Gain.GAIN_0_5X
             
@@ -89,8 +104,8 @@ class AdafruitSensorWorker(BasePollingWorker):
             
             self.initialized = True
             
-        except (NameError, ValueError, OSError, AttributeError, TypeError) as e:
-            print(f"[{name}] Hardware failure: {e}")
+        except (NameError, ValueError, OSError, AttributeError, TypeError, RuntimeError) as exc:
+            print(f"[{name}] Hardware failure: {exc}")
             self.sensor = None
             return
     
@@ -196,25 +211,34 @@ class AdafruitSensorWorker(BasePollingWorker):
             clr = self.sensor.channel_clear
             
             data = list(raw_vals) + [ir,clr]
+
+            sample = AdafruitSample(
+                channel_415=data[0],
+                channel_445=data[1],
+                channel_480=data[2],
+                channel_515=data[3],
+                channel_555=data[4],
+                channel_590=data[5],
+                channel_630=data[6],
+                channel_680=data[7],
+                channel_nir=data[8],
+                channel_clr=data[9],
+                exposure_t=self.exposure_time,
+                timestamp_ns=self.timestamp()
+            )
             
-            channels = {'channel_415': data[0],
-                        'channel_445': data[1],
-                        'channel_480': data[2],
-                        'channel_515': data[3],
-                        'channel_555': data[4],
-                        'channel_590': data[5],
-                        'channel_630': data[6],
-                        'channel_680': data[7],
-                        'channel_nir': data[8],
-                        'channel_clr': data[9],
-                        'exposure_t': self.exposure_time,
-                        'timestamp': self.timestamp()
-                        }
-            
-            self.data_ready.emit(self.name, 'ada_as7341', channels)
+            self.data_ready.emit(self.name, 'ada_as7341', asdict(sample))
             self.autoscale_integration(data)
             
             self.flash_LED()
     
-        except Exception as e:
-            print(f"Adafruit Read Error: {e}")
+        except Exception as exc:
+            print(f"Adafruit Read Error: {exc}")
+
+    def _safe_shutdown(self,reason="Unknown Error"):   
+        if reason != ("User Interrupt (Ctrl+C)"):
+            print(f"\n[CRITICAL ERROR] Initiating Safe Shutdown for {self.name}!")
+            print(f"Reason: {reason}")
+
+        self.sensor.led = False
+        self.initialized = False

@@ -9,8 +9,8 @@ pygeometers and SP-510 and SP-610 pyronometers
 @email: matt(dot)varnam
 """
 # =============================================================================
-# Define imports
-# =============================================================================
+
+from dataclasses import dataclass, asdict
 
 # Import the basic BaseWorker from the base module to apply to Apogee sensors
 from spytfire.base import BasePollingWorker
@@ -28,26 +28,37 @@ import serial
 # Use time to add delays in loops to prevent overloading of a looped function
 import time
 
-# =============================================================================
-# Create new SensorWorker for the delta-T SPN1
+@dataclass(frozen=True)
+class SPN1Sample:
+    """A simple container for a single SPN1 radiometer sample."""
+    total_sun: float
+    diffuse_sun:float
+    sun_bool: bool
+    case_temp: float
+    timestamp_ns: int
+
 # =============================================================================
 
 class SPN1SensorWorker(BasePollingWorker):
     '''Class to read the Delta-T SPN1 and emit it to the controller.'''
     data_ready = Signal(str, str, dict)
 
-    def __init__(self, name, serial_num = None, address = None, interval_ms=200, mux=None):
+    def __init__(self, name, serial_num = None, address = None, interval_ms=200, i2cbus=None):
         """
-        A BasePollingWorker to connect and operate a delta-T SPN1
-        sunshine pyronometer to measure the total and diffuse solar 
-        irradiance in a volcanic plume.
+        Connect to and operate a Delta-T SPN1 sunshine pyranometer.
 
         Parameters
         ----------
         name : string
-            A unique ID for the specific sensor in use
-        interval_ms : int, optional (Default is 200 ms)
-            Provided the repolling time between each measurement start
+            Unique identifier for the sensor instance.
+        serial_num : string, optional
+            Device serial number, if available. Not used by this sensor.
+        address : object, optional
+            Device address, if applicable. Not used by this worker.
+        interval_ms : int, optional
+            Polling interval between measurements, in milliseconds.
+        i2cbus : object, optional
+            Accepted for the shared worker interface; SPN1 uses serial.
 
         Attributes
         ----------
@@ -58,10 +69,9 @@ class SPN1SensorWorker(BasePollingWorker):
 
         Emits
         ----------
-        data_ready : dictionary
-            A dictionary object containing information on the direct and total
-            irradiation measured by the spn1, a determined 'cloudiness' boolean
-            and the sensor payload computer timestamp
+        data_ready : dict
+            Total and diffuse irradiance, sun state, case temperature, and
+            acquisition timestamp.
 
         """
 
@@ -111,30 +121,25 @@ class SPN1SensorWorker(BasePollingWorker):
             # Quick check to make sure data has correct starting number
             if decode.startswith('F'):
                 parts = [p.strip() for p in decode.split(',')]
-                
-                total   = float(parts[0][1:])
-                diffuse = float(parts[1])
-                sun     = int(parts[2])
-                case_t  = float(parts[-2])
-                now     = self.timestamp()  
 
-            spn1_dict = {'total'        : total,
-                         'diffuse'      : diffuse,
-                         'sun_state'    : sun,
-                         'case_temp'    : case_t,
-                         'timestamp'    : now
-                         }
+                sample = SPN1Sample(
+                    total_sun=float(parts[0][1:]),
+                    diffuse_sun=float(parts[1]),
+                    sun_bool=bool(parts[2]),
+                    case_temp=float(parts[-2]),
+                    timestamp_ns=self.timestamp()
+                )
 
-            self.data_ready.emit(self.name, 'spn1', spn1_dict)
-            
+            self.data_ready.emit(self.name, 'spn1', asdict(sample))
+
         except Exception as e:
             print(f"SPN1 Read Error: {e}")
-            
+
     def _safe_shutdown(self, reason="Unknown Error"):
         if reason != ("User Interrupt (Ctrl+C)"):
             print(f"\n[CRITICAL ERROR] Initiating Safe Shutdown for {self.name}!")
             print(f"Reason: {reason}")
-            
+
         if hasattr(self, 'sensor') and self.sensor is not None:
             try:
                 self.sensor.close()
@@ -142,5 +147,5 @@ class SPN1SensorWorker(BasePollingWorker):
                 print(f"[{self.name}] Serial control failed: {shutdown_err}")
         else:
             print(f"[{self.name}] Cannot disable hardware: Connection reference is missing")
-            
+
         self.initialized = False

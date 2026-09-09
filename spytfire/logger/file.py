@@ -32,15 +32,17 @@ sensor_config2 = config['sensors']
 if sensor_config2 is None:
     sensor_config2 = {}
 
-sensor_config2['Pyro_Up']    = {'serial_num': None, 'type': 'apogee_su', 'interval': 2000}
-sensor_config2['Pyro_Down']  = {'serial_num': None, 'type': 'apogee_sd', 'interval': 2000}
-sensor_config2['Pygeo_Up']   = {'serial_num': None, 'type': 'apogee_lu', 'interval': 2000}
-sensor_config2['Pygeo_Down'] = {'serial_num': None, 'type': 'apogee_ld', 'interval': 2000}
-sensor_config2['GPS']        = {'serial_num': None, 'type': 'gps'      , 'interval': 2000}
-sensor_config2['IMU']        = {'serial_num': None, 'type': 'attitude' , 'interval': 2000}
-sensor_config2['SO2']        = {'serial_num': None, 'type': 'so2'      , 'interval': 2000}
-sensor_config2['Dark_Spec']  = {'serial_num': None, 'type': 'dark'     , 'interval': 2000}
-sensor_config2['Default']    = {'serial_num': None, 'type': 'default'  , 'interval': 2000}
+sensor_config2['Pyro_Up']    = {'serial_num': None, 'type': 'apogee_su'}
+sensor_config2['Pyro_Down']  = {'serial_num': None, 'type': 'apogee_sd'}
+sensor_config2['Pygeo_Up']   = {'serial_num': None, 'type': 'apogee_lu'}
+sensor_config2['Pygeo_Down'] = {'serial_num': None, 'type': 'apogee_ld'}
+sensor_config2['GPS']        = {'serial_num': None, 'type': 'gps'      }
+sensor_config2['IMU']        = {'serial_num': None, 'type': 'attitude' }
+sensor_config2['SO2_Col']    = {'serial_num': None, 'type': 'so2_col'  }
+sensor_config2['Dark_Spec']  = {'serial_num': None, 'type': 'dark'     }
+sensor_config2['Alpha_HCl']  = {'serial_num': None, 'type': 'alpha_hcl'}
+sensor_config2['Alpha_CO2']  = {'serial_num': None, 'type': 'alpha_co2'}
+sensor_config2['Default']    = {'serial_num': None, 'type': 'default'  }
 
 # =========================================================================
 #  Logger to save measured data to files
@@ -67,7 +69,7 @@ class FileLogger(QObject):
             'ada_as7341': {
                 'file_prefix': f'{prefix}ada/',
                 'fields': {
-                    'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'channel_415'   : {'fmt':'.0f', 'header': '415 Channel'},
                     'channel_445'   : {'fmt':'.0f', 'header': '445 Channel'},
                     'channel_480'   : {'fmt':'.0f', 'header': '480 Channel'},
@@ -85,7 +87,7 @@ class FileLogger(QObject):
             'pim_bme280': {
                 'file_prefix': f'{prefix}bme/',
                 'fields': {
-                    'timestamp'  : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'  : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'temperature': {'fmt':'.2f', 'header': 'Temperature (°C)'},
                     'pressure'   : {'fmt':'.1f', 'header': 'Temperature (hPa)'},
                     'humidity'   : {'fmt':'.2f', 'header': 'Humidity (%)'},
@@ -95,7 +97,7 @@ class FileLogger(QObject):
             'gps'       : {
                 'file_prefix': f'{prefix}gps/',
                 'fields': {
-                    'timestamp'  : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'  : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'lat'        : {'fmt':'.6f', 'header': 'Latitude (deg)'},
                     'lon'        : {'fmt':'.6f', 'header': 'Longitude (deg)'},
                     'alt'        : {'fmt':'.1f', 'header': 'Altitude (m)'}
@@ -105,7 +107,7 @@ class FileLogger(QObject):
             'attitude'       : {
                 'file_prefix': f'{prefix}attitude/',
                 'fields': {
-                    'timestamp'  : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'  : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'pitch'        : {'fmt':'.6f', 'header': 'Pitch (deg)'},
                     'yaw'        : {'fmt':'.6f', 'header': 'Yaw (deg)'},
                     'roll'        : {'fmt':'.6f', 'header': 'Roll (deg)'}
@@ -115,7 +117,7 @@ class FileLogger(QObject):
             'spn1'      : {
                 'file_prefix': f'{prefix}spn1/', 
                 'fields': {
-                    'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'total'         : {'fmt':'.1f', 'header': 'Total (W/m2)'},
                     'diffuse'       : {'fmt':'.1f', 'header': 'Diffuse (W/m2)'},
                     'sun_state'     : {'fmt':'.0f', 'header': 'Sun bool'},
@@ -126,7 +128,7 @@ class FileLogger(QObject):
             'apogee_lu': {
                 'file_prefix': f'{prefix}apogeeLU/',
                 'fields': {
-                    'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'radiative_flux': {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
                     'excite_v'      : {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
                     'sensor_t'      : {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
@@ -138,7 +140,7 @@ class FileLogger(QObject):
             'apogee_ld': {
                 'file_prefix': f'{prefix}apogeeLD/',
                 'fields': {
-                    'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'radiative_flux': {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
                     'excite_v'      : {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
                     'sensor_t'      : {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
@@ -150,7 +152,7 @@ class FileLogger(QObject):
             'apogee_su': {
                 'file_prefix': f'{prefix}apogeeSU/',
                 'fields': {
-                    'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'      : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'radiative_flux' : {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
                     'voltage'        : {'fmt':'.6f', 'header': 'Differential Voltage Down (V)' }
                     }
@@ -159,7 +161,7 @@ class FileLogger(QObject):
             'apogee_sd': {
                 'file_prefix': f'{prefix}apogeeSD/',
                 'fields': {
-                    'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'      : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'radiative_flux' : {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
                     'voltage'        : {'fmt':'.6f', 'header': 'Differential Voltage Down (V)'}
                     }
@@ -168,7 +170,7 @@ class FileLogger(QObject):
             'spec': {
                 'file_prefix': f'{prefix}spec/',
                 'fields': {
-                    'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'      : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'x'              : {'fmt':'.1f', 'header': 'Counts'},
                     'y'              : {'fmt':'.1f', 'header': 'Counts'}
                     }
@@ -177,7 +179,7 @@ class FileLogger(QObject):
             'dark': {
                 'file_prefix': f'{prefix}spec/',
                 'fields': {
-                    'timestamp'      : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'      : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'x'              : {'fmt':'.1f', 'header': 'Counts'},
                     'y'              : {'fmt':'.1f', 'header': 'Counts'}
                     }
@@ -211,7 +213,7 @@ class FileLogger(QObject):
             'voltage':{
                 'file_prefix':f'{prefix}voltage/',
                 'fields': {
-                    'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'excite_v'      : {'fmt':'.6f', 'header': 'Excitation Voltage (V)'}
                     }
                 },
@@ -219,17 +221,37 @@ class FileLogger(QObject):
             'alpha_gas':{
                 'file_prefix':f'{prefix}gas/',
                 'fields': {
-                    'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'name'          : {'fmt':'str', 'header': 'Name'},
                     'mvolt'         : {'fmt':'.2f', 'header': 'Sensor Voltage (V)'},
-                    'conc'          : {'fmt':'.1f', 'header': 'Gas Concentration (ppb)'}
+                    'conc'          : {'fmt':'.1f', 'header': 'Gas Concentration (ppm)'}
                     }
                 },
 
-            'so2':{
-                'file_prefix':f'{prefix}so2/',
+            'alpha_hcl':{
+                'file_prefix':f'{prefix}hcl/',
                 'fields': {
-                    'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'name'          : {'fmt':'str', 'header': 'Name'},
+                    'mvolt'         : {'fmt':'.2f', 'header': 'Sensor Voltage (V)'},
+                    'conc'          : {'fmt':'.1f', 'header': 'Gas Concentration (ppm)'}
+                    }
+                },
+
+            'alpha_co2':{
+                'file_prefix':f'{prefix}co2/',
+                'fields': {
+                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'name'          : {'fmt':'str', 'header': 'Name'},
+                    'mvolt'         : {'fmt':'.2f', 'header': 'Sensor Voltage (V)'},
+                    'conc'          : {'fmt':'.1f', 'header': 'Gas Concentration (ppm)'}
+                    }
+                },
+
+            'so2_col':{
+                'file_prefix':f'{prefix}so2_col/',
+                'fields': {
+                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'so2'           : {'fmt':'.2E', 'header': 'SO2 Column (molecules/cm2)'},
                     'o3'            : {'fmt':'.2E', 'header': 'O3 Column (molecules/cm2)'}
                     }
@@ -238,7 +260,7 @@ class FileLogger(QObject):
             'default':{
                 'file_prefix':f'{prefix}default/',
                 'fields': {
-                    'timestamp'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
                     'value'         : {'fmt':'.2E', 'header': 'Rand (arb)'}
                     }
                 }
@@ -264,13 +286,13 @@ class FileLogger(QObject):
     @Slot(str, str, dict)
     def handle_data(self, name, sensor_type, data_dict):
 
-        sensor = self.SENSOR_CONFIG.get(sensor_type)
+        sensor_data_layout = self.SENSOR_CONFIG.get(sensor_type)
         fields_config = self.SENSOR_CONFIG[sensor_type]['fields']
         
-        if not sensor:
+        if not sensor_data_layout:
             raise ValueError('Incorrect sensor name chosen')
             
-        output_file = sensor['output_file']
+        output_file = sensor_data_layout['output_file']
         
         # Update excitation voltage to most recently measured value
         if sensor_type == 'voltage':
@@ -330,9 +352,9 @@ class FileLogger(QObject):
     @Slot(str, str, dict)
     def handle_spec(self, name, sensor_type, data_dict):
 
-        sensor_info = self.SENSOR_CONFIG.get(sensor_type)
+        sensor_data_layout = self.SENSOR_CONFIG.get(sensor_type)
 
-        if not sensor_info:
+        if not sensor_data_layout:
             raise ValueError('Incorrect sensor name chosen')
 
         if not self.recording_active:
@@ -341,11 +363,11 @@ class FileLogger(QObject):
         if self.nspec > 99999:
             # Set the timestamp that names each file created
             timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-            self.SENSOR_CONFIG[sensor_type]['output_file'] = sensor_info['file_prefix'] + timestamp
-            Path(sensor_info['output_file']).mkdir(parents=True, exist_ok=True)
+            self.SENSOR_CONFIG[sensor_type]['output_file'] = sensor_data_layout['file_prefix'] + timestamp
+            Path(sensor_data_layout['output_file']).mkdir(parents=True, exist_ok=True)
             self.nspec = 0
 
-        prefix = sensor_info['output_file']
+        prefix = sensor_data_layout['output_file']
         
         spec_fname = f'{prefix}/spectrum_{self.nspec:05d}' + '.txt'
 
@@ -411,15 +433,15 @@ class FileLogger(QObject):
             for name in self.sensor_list:
 
                 sensor_type = sensor_config2[name]['type']
-                sensor_info = self.SENSOR_CONFIG.get(sensor_type)
+                sensor_data_layout = self.SENSOR_CONFIG.get(sensor_type)
 
                 print(name)
                 # Search for the directory and create the folder if it does not exist
-                Path(sensor_info['file_prefix']).mkdir(parents=True, exist_ok=True)
+                Path(sensor_data_layout['file_prefix']).mkdir(parents=True, exist_ok=True)
                 
                 if name == 'UV_Spec':
                     self.nspec = 0
-                    filepath = sensor_info['file_prefix']+ timestamp
+                    filepath = sensor_data_layout['file_prefix']+ timestamp
 
                     Path(filepath).mkdir(parents=True, exist_ok=True)
                     Path(filepath + '/spec').mkdir(parents=True, exist_ok=True)
@@ -428,7 +450,7 @@ class FileLogger(QObject):
                     self.SENSOR_CONFIG[sensor_type]['output_file'] = filepath + '/spec'
 
                 elif name == 'Dark_Spec':
-                    filepath = sensor_info['file_prefix']+ timestamp
+                    filepath = sensor_data_layout['file_prefix']+ timestamp
 
                     Path(filepath).mkdir(parents=True, exist_ok=True)
                     Path(filepath + '/spec').mkdir(parents=True, exist_ok=True)
@@ -438,7 +460,7 @@ class FileLogger(QObject):
 
 
                 else:    
-                    filename = sensor_info['file_prefix']+ timestamp
+                    filename = sensor_data_layout['file_prefix']+ timestamp
                     output_file = open(filename +'.txt', "w")
                     output_file.write(f"MACE File Version {__fileversion__}\n")
                     
@@ -446,7 +468,7 @@ class FileLogger(QObject):
                     base_headers = ["UAS Time", "Local RX Time (ns)"]
                     
                     # Extract custom sensor headers in their defined order
-                    sensor_headers = [info['header'] for info in sensor_info['fields'].values()]
+                    sensor_headers = [info['header'] for info in sensor_data_layout['fields'].values()]
                     
                     # Combine them into a single comma-separated line
                     full_header_line = ", ".join(base_headers + sensor_headers)
@@ -462,9 +484,9 @@ class FileLogger(QObject):
             for name in self.sensor_list:
                 sensor_type = sensor_config2[name]['type']
                 sensor_info = self.SENSOR_CONFIG.get(sensor_type)
-                if name != 'UV_Spec' and sensor_info['output_file'] is not None:
-                    sensor_info['output_file'].close()
-                    sensor_info['output_file'] = None
+                if name != 'UV_Spec' and sensor_data_layout['output_file'] is not None:
+                    sensor_data_layout['output_file'].close()
+                    sensor_data_layout['output_file'] = None
                                 
                 print("[!] Recording stopped and file closed at {timestamp}.")
             
@@ -473,7 +495,7 @@ class FileLogger(QObject):
         # --- STOP RECORDING: Close Current File ---
         for name in self.sensor_list:
             sensor_type = sensor_config2[name]['type']
-            sensor_info = self.SENSOR_CONFIG.get(sensor_type)
-            if name not in ['UV_Spec','Dark_Spec'] and sensor_info['output_file'] is not None:
-                sensor_info['output_file'].close()
-                sensor_info['output_file'] = None
+            sensor_data_layout = self.SENSOR_CONFIG.get(sensor_type)
+            if name not in ['UV_Spec','Dark_Spec'] and sensor_data_layout['output_file'] is not None:
+                sensor_data_layout['output_file'].close()
+                sensor_data_layout['output_file'] = None
