@@ -26,21 +26,24 @@ class MavlinkWorker(BaseWorker):
     '''Class to read the MAVlink connection and emit data to the controller.'''
     data_ready = Signal(str, str, dict)
     recording_trigger = Signal(bool)
+    heater_trigger = Signal(bool)
     uas_time_updated  = Signal('qint64')
 
-    def __init__(self, connection_str, channel_num = 11, name="MAVLink"):
+    def __init__(self, connection_str, channel_num0 = 11, channel_num1 = 12, name="MAVLink"):
         super().__init__(name,serial_num=None,address=None,interval_ms=None)
         
         # Identify the name of the MAVLINK channel from the input number
         channel_dict = {i: f'chan{i}_raw' for i in range(1, 19)}
         
         try:
-            channel_name = channel_dict[channel_num]
+            channel_name0 = channel_dict[channel_num0]
+            channel_name1 = channel_dict[channel_num1]
         except KeyError:
             raise ValueError('Incorrect channel chosen')
         
         self.connection_str = connection_str
-        self.channel_name = channel_name
+        self.channel_name0 = channel_name0
+        self.channel_name1 = channel_name1
 
         try:
             # 1. Initialize connection
@@ -51,6 +54,7 @@ class MavlinkWorker(BaseWorker):
             print(f"[-] MAVLink Error: {e}")
 
         self.recording = True
+        self.heating = False
         self.initialized = True
 
     def start_work(self):
@@ -94,15 +98,24 @@ class MavlinkWorker(BaseWorker):
                              'timestamp_ns': self.timestamp()}
                 self.data_ready.emit('IMU', 'attitude', data_dict)
             case 'RC_CHANNELS':                                   #msg_type  35
-                channel_value = getattr(msg, self.channel_name, 1500)
-                if channel_value == 0:
+                channel_value0 = getattr(msg, self.channel_name0, 1500)
+                channel_value1 = getattr(msg, self.channel_name1, 1500)
+
+                if channel_value0 == 0 and channel_value1 == 0:
                     return
                 
-                elif channel_value > 1800 and not self.recording:
+                if channel_value0 > 1800 and not self.recording:
                     self.set_recording_state(True, "Payload recording Started")
                                              
-                elif channel_value < 1200 and self.recording:
-                    self.set_recording_state(False, "Payload recording Stopped")                          
+                elif channel_value0 < 1200 and self.recording:
+                    self.set_recording_state(False, "Payload recording Stopped")
+
+                if channel_value1 > 1800 and not self.heating:
+                    self.set_heater_state(True, "Heater turned ON")
+                                             
+                elif channel_value1 < 1200 and self.heating:
+                    self.set_heater_state(False, "Heater turned OFF")
+                                             
             #case 'TIMESYNC':                                      #msg_type 111
             #    pass
             case 'HIL_STATE_QUATERNION':                           #msg_type 115
@@ -117,7 +130,17 @@ class MavlinkWorker(BaseWorker):
                     mavutil.mavlink.MAV_SEVERITY_INFO,
                     status_text.encode('utf-8')
             )
-                
+
+    def set_heater_state(self, state, status_text):
+            """Helper to deduplicate statustext packet transmissions."""
+            self.heating = state
+            self.heater_trigger.emit(state)
+            if self.parent:
+                self.parent.mav.statustext_send(
+                    mavutil.mavlink.MAV_SEVERITY_INFO,
+                    status_text.encode('utf-8')
+            )
+         
     def _safe_shutdown(self, reason="Unknown Error"):
         if reason != ("User Interrupt (Ctrl+C)"):
             print(f"\n[CRITICAL ERROR] Initiating Safe Shutdown for {self.name}!")

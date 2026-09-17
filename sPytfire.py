@@ -19,6 +19,7 @@ pip install pyqtdarktheme
 
 # Manual change to on/off recording channel
 on_off_channel = 11
+heater_channel = 12
 
 # Manual change to mavlink connection string
 # connection_str = "COM6"
@@ -30,8 +31,26 @@ connection_str = "udpin:192.168.137.51:14550"
 #  Define imports
 # =========================================================================
 
+import os
+if os.name == "nt":
+    frequency_Hz = 100000
+    os.environ["BLINKA_MCP2221"] = "1"
+    os.environ["BLINKA_MCP2221_I2C_FREQUENCY"] = str(frequency_Hz)
+
+# This annoyingly has to be hear to make sure board imports correctly on Windows
+import board
+
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, QThread, Slot, QTimer, QCoreApplication, Qt, Signal, QEventLoop
+
+from spytfire.i2c import I2CManager
+from spytfire.relay import RelayControl
+from spytfire.base import SensorWorker, UASWorker
+from spytfire.mavlink import MavlinkWorker
+
+from spytfire.logger.console import ConsoleLogger
+from spytfire.logger.file import FileLogger
+from spytfire.logger.analysis import AnalysisLogger
 
 # Load custom modules containing the workers for each sensor/connection
 from spytfire.sensor.adafruit import AdafruitSensorWorker
@@ -45,13 +64,6 @@ from spytfire.sensor.spectrometer import SpecWorker
 from spytfire.sensor.spn1 import SPN1SensorWorker
 from spytfire.sensor.voltage import VoltageSensorWorker
 from spytfire.sensor.dummy_spectrometer import DummySpecWorker
-
-from spytfire.mavlink import MavlinkWorker
-from spytfire.base import SensorWorker, UASWorker, I2CManager
-
-from spytfire.logger.console import ConsoleLogger
-from spytfire.logger.file import FileLogger
-from spytfire.logger.analysis import AnalysisLogger
 
 # Load other libraries
 from pathlib import Path
@@ -112,7 +124,7 @@ class Controller(QObject):
     setup_complete = Signal()
     sensor_list = Signal(list)
 
-    def __init__(self, handlers, conn_str, rc_channel):
+    def __init__(self, handlers, conn_str, rc_channel, heater_channel):
         super().__init__()
         self.handlers = handlers
         self.threads = []
@@ -121,7 +133,7 @@ class Controller(QObject):
         self._connect_analysis()
 
         # Setup MAVLINK
-        self._add_mavlink(conn_str, rc_channel)
+        self._add_mavlink(conn_str, rc_channel, heater_channel)
 
         # Setup UAS Time
         if self.mav_worker.is_initialized:
@@ -129,6 +141,9 @@ class Controller(QObject):
 
         # Setup the I2C bus manager and set multiplex to False for now
         self.i2cbus_manager = I2CManager(multiplex=False)
+
+        # Setup relay control
+        self.relay_control = RelayControl()
 
         # Setup Sensors
         for name, info in SENSOR_INFO.items():
@@ -153,9 +168,9 @@ class Controller(QObject):
             if hasattr(handler, "confirm_setup_complete"):
                 self.setup_complete.connect(handler.confirm_setup_complete)
 
-    def _add_mavlink(self, conn_str, rc_channel):
+    def _add_mavlink(self, conn_str, rc_channel0, rc_channel1):
         # Create the worker
-        self.mav_worker = MavlinkWorker(conn_str,channel_num = rc_channel)
+        self.mav_worker = MavlinkWorker(conn_str,channel_num0 = rc_channel0, channel_num1 = rc_channel1)
         
         # Create a new QThread, then move the worker onto the thread
         thread = QThread()
@@ -165,19 +180,27 @@ class Controller(QObject):
         thread.started.connect(self.mav_worker.start_work)
         thread.finished.connect(self.mav_worker.deleteLater)       # Clean exit
         
-        # Wire up the mavlink worker's recording bool change to filelogger
+        # Connect Slots to handle worker emitted signals
         for handler in self.handlers:
             if hasattr(handler, "set_recording_state"):
                 self.mav_worker.recording_trigger.connect(handler.set_recording_state)
         
-        for handler in self.handlers:
             if hasattr(handler, "handle_data"):
                 self.mav_worker.data_ready.connect(handler.handle_data)
-          
+
+        self.mav_worker.heater_trigger.connect(self.switch_relay)
+
         self.threads.append(thread)
         self.workers.append(self.mav_worker)
         thread.start()    
-        
+
+    @Slot(bool)
+    def switch_relay(self, state):
+        if state:
+            self.relay_control.relay_on()
+        else:
+            self.relay_control.relay_off()
+
     def _add_uas_time(self):
         # Create the worker
         self.uas_worker = UASWorker("UAS_TIME")
@@ -201,7 +224,7 @@ class Controller(QObject):
         self.threads.append(thread)
         self.workers.append(self.uas_worker)
         thread.start()
-    
+
     def add_sensor(self, name, serial_num, address, worker_class, sensor_type='default', interval=1000):
 
         # Retrieve the class and interval, falling back to defaults
@@ -302,6 +325,7 @@ class Controller(QObject):
             thread.wait(1000)
 
         self.i2cbus_manager.close()
+        self.relay_control.close()
             
         # Cleanup FileLogger and Console Logger handlers 
         for handler in self.handlers:
@@ -330,7 +354,8 @@ def main():
     analysis_logger = AnalysisLogger()
     controller = Controller([console_logger, file_logger, analysis_logger],
                              connection_str,
-                             on_off_channel)
+                             on_off_channel,
+                             heater_channel)
 
     # Hook Ctrl+C
     pysignal.signal(pysignal.SIGINT, lambda sig, frame: (exit_timer.stop(), controller.request_exit()))

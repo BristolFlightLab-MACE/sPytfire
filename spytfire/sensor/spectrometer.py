@@ -22,12 +22,6 @@ import spytfire.sensor.av_error as av_error
 # Import pyside6 to create the process for reading data in to an application
 from PySide6.QtCore import QObject, Signal, Slot, QTimer, QCoreApplication, Qt
 
-# Import random to provide random inputs for the demonstration SensorWorker
-import random
-
-# Provides some useful time options
-from datetime import datetime, timezone
-
 # Useful for array manipulation and spectra averaging
 import numpy as np
 

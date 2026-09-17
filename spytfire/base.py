@@ -8,10 +8,6 @@ Created on Tue Mar 31 11:39:00 2026
 # =============================================================================
 # Define imports
 # =============================================================================
-
-# Import library for managing the I2C multiplexer if present
-import adafruit_tca9548a
-
 # Import pyside6 to create the process for reading data in to an application
 import os
 
@@ -150,39 +146,3 @@ class UASWorker(BaseWorker):
             time_string = dt.strftime('%Y-%m-%d %H:%M:%S.%f')
             # Directly emit the time update from Mavlink to sPytfire main
             self.data_ready.emit(time_string)
-
-class I2CManager:
-    def __init__(self, multiplex=False):
-        self.multiplex = multiplex
-
-        if os.name == "nt":
-            frequency_Hz = 100000
-            os.environ["BLINKA_MCP2221"] = "1"
-            os.environ["BLINKA_MCP2221_I2C_FREQUENCY"] = str(frequency_Hz)
-
-        # deferred to allow MCP2221 to be initialized before board.I2C() is called on Windows
-        import board
-        
-        try:
-            self.i2c = board.I2C()
-
-            if self.multiplex:
-                self.bus = adafruit_tca9548a.PCA9546A(self.i2c)
-            else:
-                self.bus = self.i2c
-
-        except:
-            self.bus = None
-
-    def get_channel(self, address):
-        if address is list or tuple and self.multiplex:
-            channel, _ = address
-            return self.bus[channel]
-        else:
-            return self.bus        
-
-    def close(self):
-        self.bus = None
-        self.i2c.deinit()
-        self.i2c = None
-        

@@ -89,3 +89,5 @@ class VoltageSensorWorker(BasePollingWorker):
 
         except Exception as exc:
             print(f"Voltage Read Error: {exc}")
+
+        self.initialized = False
