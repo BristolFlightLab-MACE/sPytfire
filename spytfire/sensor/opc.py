@@ -83,7 +83,8 @@ class OPCSensorWorker(BasePollingWorker):
         if spi is None:
             try:
                 # Two options depending on whether usb or spi connection is used
-                spi = SPI('/dev/ttyACM0')
+                #spi = SPI('/dev/ttyACM0')
+                spi = SPI('COM3')
 
             except Exception as exc:
                 print(f"[{name}] OPC USB setup failed: {exc}")
@@ -93,7 +94,8 @@ class OPCSensorWorker(BasePollingWorker):
 
         # Return to common code
         spi.mode = 1
-        spi.max_speed_hz = 500000
+        #spi.max_speed_hz = 500000
+        spi.max_speed_hz = 250000
         spi.lsbfirst = False
         self.spi = spi
 

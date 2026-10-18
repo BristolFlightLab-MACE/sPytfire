@@ -22,22 +22,43 @@ import adafruit_tca9548a
 # =============================================================================
 
 class I2CManager:
-    def __init__(self, multiplex=False):
+    def __init__(self, multiplex=False, type='board',i2cline=None):
         self.multiplex = multiplex
-        
+
+        if type == 'board':
+            self.setup_i2c_board()
+        elif type == 'smbus2':
+            self.setup_i2c_smbus2(i2cline)
+
+    def setup_i2c_board(self):
         try:
             self.i2c = board.I2C()
 
             if self.multiplex:
                 self.bus = adafruit_tca9548a.PCA9546A(self.i2c)
+                print(f'Multiplexer detected on I2C bus {self.i2c}')
             else:
                 self.bus = self.i2c
 
-        except:
+        except Exception as exc:
+            print(f'Exception encountered {exc}')
+            self.bus = None
+
+    def setup_i2c_smbus2(self,i2cline=2):
+        import smbus2
+
+        try:
+            self.i2c = smbus2.SMBus(i2cline)
+            self.bus = self.i2c
+
+        except Exception as exc:
+            print(f'Exception encountered {exc}')
             self.bus = None
 
     def get_channel(self, address):
-        if address is list or tuple and self.multiplex:
+        if address is None:
+            return None
+        elif address is list or tuple and self.multiplex:
             channel, _ = address
             return self.bus[channel]
         else:
@@ -47,4 +68,3 @@ class I2CManager:
         self.bus = None
         self.i2c.deinit()
         self.i2c = None
-        

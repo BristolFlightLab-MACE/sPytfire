@@ -79,7 +79,6 @@ class AFESensorWorker(BasePollingWorker):
         self.initialized = True
 
     def process(self):
-        ### CODE HERE SHOULD BE ADAPTED TO CO2 OR HCL SENSOR
         _ = self.chan.voltage
         time.sleep(0.01)
         mvolt = self.chan.voltage * 1000

@@ -19,7 +19,8 @@ pip install pyqtdarktheme
 
 # Manual change to on/off recording channel
 on_off_channel = 11
-heater_channel = 12
+heater_channel0 = 12
+heater_channel1 = 13
 
 # Manual change to mavlink connection string
 # connection_str = "COM6"
@@ -83,8 +84,6 @@ if config is None:
 
 if config.get('sensors') is None:
     raise ValueError("No sensor configuration found in config.yaml. Please provide a valid configuration file.")
-    #config['sensors'] = {}
-    #config['sensors']['Default'] = {'serial_num': None, 'type': 'default', 'address': None, 'interval': 1000}
 
 sensor_config = config['sensors']
 
@@ -140,7 +139,8 @@ class Controller(QObject):
             self._add_uas_time()
 
         # Setup the I2C bus manager and set multiplex to False for now
-        self.i2cbus_manager = I2CManager(multiplex=False)
+        self.i2cbus_manager0 = I2CManager(multiplex=True,type='board')
+        self.i2cbus_manager1 = I2CManager(multiplex=False,type='smbus2',i2cline=2)
 
         # Setup relay control
         self.relay_control = RelayControl()
@@ -232,8 +232,8 @@ class Controller(QObject):
 
         if worker_class is SensorWorker:
             print(f"WARNING: Default Worker created for sensor_type '{sensor_type}'")
-
-        self.i2cbus = self.i2cbus_manager.get_channel(address)
+        
+        self.i2cbus = self.i2cbus_manager0.get_channel(address)
         
         worker = worker_class(
             name=name,
@@ -324,7 +324,7 @@ class Controller(QObject):
             thread.quit()
             thread.wait(1000)
 
-        self.i2cbus_manager.close()
+        self.i2cbus_manager0.close()
         self.relay_control.close()
             
         # Cleanup FileLogger and Console Logger handlers 
@@ -355,7 +355,7 @@ def main():
     controller = Controller([console_logger, file_logger, analysis_logger],
                              connection_str,
                              on_off_channel,
-                             heater_channel)
+                             heater_channel0)
 
     # Hook Ctrl+C
     pysignal.signal(pysignal.SIGINT, lambda sig, frame: (exit_timer.stop(), controller.request_exit()))

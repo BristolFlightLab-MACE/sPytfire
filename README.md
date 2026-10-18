@@ -46,3 +46,22 @@ A useful command to check i2c connections is as follows:
 ```
 sudo i2cdetect -y 1
 ```
+
+### OPC live monitor
+With the OPC-N3 configured as `alpha_opc` in `config.yaml`, run:
+```
+python opc_usb.py
+```
+The window graphs the current counts in all 24 OPC size bins and displays PM,
+flow, temperature, and humidity readings. The fan buttons control only the fan;
+the existing worker starts the laser and fan when connecting, and fan changes
+leave the laser state untouched. Select **Save incoming data to CSV** to start
+a timestamped CSV recording under `data_logs/`; uncheck it to close the file.
+OPC data is saved to an `opc_monitor_*.csv` file. Each row includes a UTC
+timestamp and the worker's monotonic timestamp. The USB interface port is
+configured in `spytfire/sensor/opc_copy.py` (currently `COM3`).
+
+To record BME280 measurements alongside OPC, enable a `pim_bme280`
+entry in `config.yaml` with its I2C address. The monitor uses `BMESensorWorker`
+and `I2CManager`; BME samples are written to a separate, compact
+`bme_monitor_*.csv` file with temperature, pressure, and humidity columns.

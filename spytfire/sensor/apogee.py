@@ -26,30 +26,17 @@ import time
 from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
 
 def find_coefficients(serial_num):
+    coeff_dict = {}
+    coeff_dict['SL510_1729'] = [8.410, 1.023]
+    coeff_dict['SL610_1463'] = [8.610, 1.029]
+    coeff_dict['SP510_3985'] = [22.78]
+    coeff_dict['SP610_1707'] = [28.99]
 
-    # SL-510-SS_1729 coefficients
-    if serial_num == 'SL510_1729':
-        k1 = 8.410 #W m-2 mV-1
-        k2 = 1.023 #Unitless
-        k = [k1, k2]
-
-    # SL-610-SS_1463 coefficients
-    elif serial_num == 'SL610_1463':
-        k1 = 8.610 #W m-2 mV-1
-        k2 = 1.029 #Unitless
-        k = [k1, k2]
-
-    # Calibration constant of SP-510-SS 3985
-    elif serial_num == 'SP510_3985':
-        k = 22.78
-
-    # Calibration constant of SP-610-SS 1707
-    elif serial_num == 'SP610_1707':
-        k = 28.99
-
-    else:
+    try:
+        k = coeff_dict[serial_num]
+    except KeyError:
+        k = None
         print(f'Unknown apogee instrument {serial_num}')
-
 
     return k
 

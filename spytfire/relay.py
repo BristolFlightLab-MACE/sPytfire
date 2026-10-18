@@ -24,12 +24,15 @@ class RelayControl(QObject):
     def __init__(self, pin = None):
         super().__init__()
 
-        if pin is None:
-            pin = board.D25
-        
-        self.relay = digitalio.DigitalInOut(pin)
-        self.relay.direction = digitalio.Direction.OUTPUT
-        self.initialized = True
+        try:
+            if pin is None:
+                pin = board.D25
+            
+            self.relay = digitalio.DigitalInOut(pin)
+            self.relay.direction = digitalio.Direction.OUTPUT
+            self.initialized = True
+        except Exception as e:
+            print(f"Error initializing relay: {e}")
 
     def relay_on(self):
         self.relay.value = True
@@ -41,5 +44,10 @@ class RelayControl(QObject):
         self.relay.value = not self.relay.value
 
     def close(self, reason="Unknown Error"):
-        self.relay_off()
+        try:
+            self.relay_off()
+            self.relay.deinit()
+        except Exception as e:
+            print(f"Error closing relay: {e}")
+            
         self.initialized = False

@@ -66,13 +66,6 @@ class BMESensorWorker(BasePollingWorker):
 
             _ , i2caddress = address
 
-            devices = i2cbus.scan()
-
-            if i2caddress not in devices:
-                raise RuntimeError(
-                    f"No BME280 at 0x{i2caddress:02X}"
-                )
-
             self.sensor = adafruit_bme280.Adafruit_BME280_I2C(
                 i2cbus,
                 address=i2caddress

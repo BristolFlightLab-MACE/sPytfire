@@ -119,7 +119,7 @@ class SO2Analysis(QObject):
 
     def update_dark(self, data_dict):
         int_time = data_dict['integration_time']
-        spec = data_dict['y']
+        spec = data_dict['spectral_data']
         self.dark_dict[int(int_time)] = spec
 
     def timestamp(self):
@@ -155,8 +155,8 @@ class SO2Analysis(QObject):
 
     def analyse_spectrum(self):
 
-        wav  = self.data_dict['x']
-        self.spec = self.data_dict['y']
+        wav  = self.data_dict['wavelength']
+        self.spec = self.data_dict['spectral_data']
                 
         # Fit the spectrum using iFit
         fit_result = self.analyser.fit_spectrum(

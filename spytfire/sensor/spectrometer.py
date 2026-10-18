@@ -32,11 +32,11 @@ import time
 class SpecSample:
     """A simple container for a single spectrometer radiometer sample."""
     wavelength: list
-    spectraldata: list
+    spectral_data: list
     serial_number: str
     coadds: int
     integration_time: int
-    timestamp: int
+    timestamp_ns: int
     dark_correction: None
     nonlin_correction: None
 
@@ -185,7 +185,7 @@ class SpecWorker(BaseWorker):
             for i in range(iterations):
                 self.measconfig.m_IntegrationTime = float(dur)
                 data = self.get_spectrum()
-                self.data_ready.emit(self.name, 'dark', data)
+                self.data_ready.emit(self.name, 'dark', asdict(data))
 
         # Reset default integration time
         self.measconfig.m_IntegrationTime = float(100)
@@ -208,6 +208,7 @@ class SpecWorker(BaseWorker):
 
         while self.initialized:
             sample = self.get_spectrum()
+            print(asdict(sample))
             self.data_ready.emit(self.name, 'spec', asdict(sample))
             self.update_interval()
 
@@ -293,7 +294,7 @@ class SpecWorker(BaseWorker):
 
         sample = SpecSample(
             wavelength=x.tolist(),
-            spectraldata=y.tolist(),
+            spectral_data=y.tolist(),
             serial_number=self.serial_number,
             integration_time=int(self.measconfig.m_IntegrationTime),
             coadds=int(self.measconfig.m_NrAverages),
