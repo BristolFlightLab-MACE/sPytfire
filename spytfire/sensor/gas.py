@@ -75,10 +75,10 @@ class GasSensorWorker(BasePollingWorker):
             self.sensor = ADS1115(i2cbus, address = i2caddress)
 
             # Create differential input between channel 0 and 1
-            self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
+            self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A0, ads1x15.Pin.A1)
 
             # Create differential input between channel 2 and 3
-            self.chan0 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
+            self.chan1 = AnalogIn(self.sensor, ads1x15.Pin.A2, ads1x15.Pin.A3)
 
         except (NameError, ValueError, OSError, AttributeError, TypeError) as exc:
             print(f"[{self.name}] Hardware failure: {exc}")
@@ -129,21 +129,21 @@ class GasSensorWorker(BasePollingWorker):
 
             sample0 = GasSample(
                 mvolt=mvolt0,
-                identity = 'CO2',
+                identity='CO2',
                 conc=conc0,
                 timestamp_ns=timestamp0
             )
 
             sample1 = GasSample(
                 mvolt=mvolt1,
-                identity = 'HCl',
+                identity='HCl',
                 conc=conc1,
                 timestamp_ns=timestamp1
             )
 
             # Emit data in slot
-            self.emit_data(sample0)
-            self.emit_data(sample1)
+            self.data_ready.emit(self.name, 'alpha_co2', asdict(sample0))
+            self.data_ready.emit(self.name, 'alpha_hcl', asdict(sample1))
 
         except Exception as exc:
             self._safe_shutdown(reason = exc)
@@ -159,7 +159,6 @@ class GasSensorWorker(BasePollingWorker):
 
         # Timestamp returning result
         timestamp = self.timestamp()
-        time.sleep(0.01)
 
         return(mvolt,timestamp)
 
@@ -175,11 +174,8 @@ class GasSensorWorker(BasePollingWorker):
         else:
             raise ValueError(f"Unknown sensor type: {identity}")
         
-        return conc
-
-    def emit_data(self,sample):        
-        self.data_ready.emit(self.name, 'alpha_gas', asdict(sample))
-
+        return conc      
+        
     def _safe_shutdown(self,reason="Unknown Error"):
         if reason != ("User Interrupt (Ctrl+C)"):
             print(f"\n[CRITICAL ERROR] Initiating Safe Shutdown for {self.name}!")

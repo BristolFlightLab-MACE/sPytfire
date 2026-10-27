@@ -23,17 +23,26 @@ import digitalio
 class RelayControl(QObject):
     def __init__(self, pin = None):
         super().__init__()
+        self.initialized = False
 
-        try:
-            if pin is None:
-                pin = board.D25
-            
-            self.relay = digitalio.DigitalInOut(pin)
-            self.relay.direction = digitalio.Direction.OUTPUT
-            self.initialized = True
-        except Exception as e:
-            print(f"Error initializing relay: {e}")
+        if os.name == "nt":
+            return
+        else:
+            try:
+                if pin is None:
+                    pin = board.D25
+                
+                self.relay = digitalio.DigitalInOut(pin)
+                self.relay.direction = digitalio.Direction.OUTPUT
+                self.initialized = True
+            except Exception as e:
+                print(f"Error initializing relay: {e}")
 
+    @property
+    def is_initialized(self):
+        """Safe read-only access for the main thread."""
+        return self.initialized
+    
     def relay_on(self):
         self.relay.value = True
 

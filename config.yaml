@@ -7,11 +7,11 @@ sensors:
   #  address: [1,0x39]
   #  interval: 2000
 
-  BME280:
-    serial_num: null
-    type: pim_bme280
-    address: [1,0x76]
-    interval: 500
+  #BME280:
+  #  serial_num: null
+  #  type: pim_bme280
+  #  address: [1,0x76]
+  #  interval: 500
 
   #Pygeo_Up:
   #  serial_num: SL510_1729
@@ -31,17 +31,17 @@ sensors:
   #  address: [1,0x49]
   #  interval: 1000
 
-  Sunshine_Pyro:
-    serial_num: A5769
-    type: spn1
-    address: null
-    interval: 1000
+  #Sunshine_Pyro:
+  #  serial_num: A5769
+  #  type: spn1
+  #  address: null
+  #  interval: 1000
 
-  UV_Spec:
-    serial_num: 7616940SP
-    type: spec
-    address: null
-    interval: null
+  #UV_Spec:
+  #  serial_num: 7616940SP
+  #  type: spec
+  #  address: null
+  #  interval: null
 
   #Fake_Spec:
   #  serial_num: null
@@ -49,17 +49,17 @@ sensors:
   #  address: null
   #  interval: null
 
-  OPC:
-    serial_num: null
-    type: alpha_opc
-    address: null
-    interval: 1000
+  #OPC:
+  #  serial_num: null
+  #  type: alpha_opc
+  #  address: null
+  #  interval: 1000
 
-  I2C_V:
-    serial_num: null
-    type: voltage
-    address: [1,0x4A]
-    interval: 1000
+  #I2C_V:
+  #  serial_num: null
+  #  type: voltage
+  #  address: [1,0x4A]
+  #  interval: 1000
     
   #CO2_HCl:
   #  serial_num: [IRC-A1,HCl-B1]
@@ -67,14 +67,20 @@ sensors:
   #  address: [2,0x48]
   #  interval: 1000
 
-  #O3:
-  #  serial_num: [OX-A431]
-  #  type: alpha_afe
-  #  address: [2,0x49]
-  #  interval: 1000
+  NO2_O3:
+    serial_num: [212500902, 214880557] #1,[212590133, 214590649]
+    type: alpha_afe
+    address: [0, 0x49]
+    interval: 1000
 
-  #H2S:
-  #  serial_num: [H2S-A4F]
-  #  type: alpha_gas?
-  #  address: [2,0x49]
-  #  interval: 1000
+  H2S_SO2:
+    serial_num: [133590062, 134880636] #1,[133260037, 134590222]
+    type: alpha_afe
+    address: [0,0x4A]
+    interval: 1000
+
+  PT1000:
+    serial_num: [null]
+    type: pt1000
+    address: [0,0x48]
+    interval: 1000

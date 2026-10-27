@@ -14,6 +14,8 @@ from pathlib import Path
 import os
 
 from spytfire.sensor.apogee import calc_longwave, find_coefficients
+from spytfire.sensor.gas_4AFE import calc_WEc, calc_concentration, find_coefficients
+from spytfire.sensor.pt1000 import calc_pt1000_temperature
 
 from datetime import datetime, timezone
 
@@ -40,6 +42,10 @@ sensor_config2['GPS']        = {'serial_num': None, 'type': 'gps'      }
 sensor_config2['IMU']        = {'serial_num': None, 'type': 'attitude' }
 sensor_config2['SO2_Col']    = {'serial_num': None, 'type': 'so2_col'  }
 sensor_config2['Dark_Spec']  = {'serial_num': None, 'type': 'dark'     }
+sensor_config2['Alpha_NO2']  = {'serial_num': None, 'type': 'alpha_no2'}
+sensor_config2['Alpha_O3']   = {'serial_num': None, 'type': 'alpha_o3' }
+sensor_config2['Alpha_H2S']  = {'serial_num': None, 'type': 'alpha_h2s'}
+sensor_config2['Alpha_SO2']  = {'serial_num': None, 'type': 'alpha_so2'}
 sensor_config2['Alpha_HCl']  = {'serial_num': None, 'type': 'alpha_hcl'}
 sensor_config2['Alpha_CO2']  = {'serial_num': None, 'type': 'alpha_co2'}
 sensor_config2['Default']    = {'serial_num': None, 'type': 'default'  }
@@ -57,6 +63,7 @@ class FileLogger(QObject):
         
         self.thermist_list = ['apogee_lu','apogee_ld']
         self.excitation_voltage = None
+        self.gas_temp = None
         self.loc = {'lat': None,
                     'lon': None,
                     'alt': None
@@ -87,112 +94,121 @@ class FileLogger(QObject):
             'pim_bme280': {
                 'file_prefix': f'{prefix}bme/',
                 'fields': {
-                    'timestamp_ns'  : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'temperature': {'fmt':'.2f', 'header': 'Temperature (°C)'},
-                    'pressure'   : {'fmt':'.1f', 'header': 'Temperature (hPa)'},
-                    'humidity'   : {'fmt':'.2f', 'header': 'Humidity (%)'},
+                    'timestamp_ns':   {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'temperature':    {'fmt':'.2f', 'header': 'Temperature (°C)'},
+                    'pressure':       {'fmt':'.1f', 'header': 'Pressure (hPa)'},
+                    'humidity':       {'fmt':'.2f', 'header': 'Humidity (%)'},
                     }
                 },
 
-            'gps'       : {
+            'gps': {
                 'file_prefix': f'{prefix}gps/',
                 'fields': {
-                    'timestamp_ns'  : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'lat'        : {'fmt':'.6f', 'header': 'Latitude (deg)'},
-                    'lon'        : {'fmt':'.6f', 'header': 'Longitude (deg)'},
-                    'alt'        : {'fmt':'.1f', 'header': 'Altitude (m)'}
+                    'timestamp_ns':   {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'lat':            {'fmt':'.6f', 'header': 'Latitude (deg)'},
+                    'lon':            {'fmt':'.6f', 'header': 'Longitude (deg)'},
+                    'alt':            {'fmt':'.1f', 'header': 'Altitude (m)'}
                     }
                 },
 
-            'attitude'       : {
+            'attitude': {
                 'file_prefix': f'{prefix}attitude/',
                 'fields': {
-                    'timestamp_ns'  : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'pitch'        : {'fmt':'.6f', 'header': 'Pitch (deg)'},
-                    'yaw'        : {'fmt':'.6f', 'header': 'Yaw (deg)'},
-                    'roll'        : {'fmt':'.6f', 'header': 'Roll (deg)'}
+                    'timestamp_ns':   {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'pitch':          {'fmt':'.6f', 'header': 'Pitch (deg)'},
+                    'yaw':            {'fmt':'.6f', 'header': 'Yaw (deg)'},
+                    'roll':           {'fmt':'.6f', 'header': 'Roll (deg)'}
                     }
                 },
             
-            'spn1'      : {
+            'spn1': {
                 'file_prefix': f'{prefix}spn1/', 
                 'fields': {
-                    'timestamp_ns'  : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'total_sun'     : {'fmt':'.1f', 'header': 'Total (W/m2)'},
-                    'diffuse_sun'   : {'fmt':'.1f', 'header': 'Diffuse (W/m2)'},
-                    'sun_bool'      : {'fmt':'.0f', 'header': 'Sun bool'},
-                    'case_temp'     : {'fmt':'.2f', 'header': "Case Temperature (°C)"}
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'total_sun':       {'fmt':'.1f', 'header': 'Total (W/m2)'},
+                    'diffuse_sun':     {'fmt':'.1f', 'header': 'Diffuse (W/m2)'},
+                    'sun_bool':        {'fmt':'.0f', 'header': 'Sun bool'},
+                    'case_temp':       {'fmt':'.2f', 'header': "Case Temperature (°C)"}
                     }
                 },
             
             'apogee_lu': {
                 'file_prefix': f'{prefix}apogeeLU/',
                 'fields': {
-                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'radiative_flux': {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
-                    'excite_v'      : {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
-                    'sensor_t'      : {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
-                    'voltage0'      : {'fmt':'.6f', 'header': 'Differential Voltage0 (V)' },
-                    'voltage1'      : {'fmt':'.6f', 'header': 'Differential Voltage1 (V)' }
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'radiative_flux':  {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
+                    'excite_v':        {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
+                    'sensor_t':        {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
+                    'voltage0':        {'fmt':'.6f', 'header': 'Differential Voltage0 (V)' },
+                    'voltage1':        {'fmt':'.6f', 'header': 'Differential Voltage1 (V)' }
                     }
                 },
             
             'apogee_ld': {
                 'file_prefix': f'{prefix}apogeeLD/',
                 'fields': {
-                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'radiative_flux': {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
-                    'excite_v'      : {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
-                    'sensor_t'      : {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
-                    'voltage0'      : {'fmt':'.6f', 'header': 'Differential Voltage0 (V)' },
-                    'voltage1'      : {'fmt':'.6f', 'header': 'Differential Voltage1 (V)' }
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'radiative_flux':  {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
+                    'excite_v':        {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
+                    'sensor_t':        {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
+                    'voltage0':        {'fmt':'.6f', 'header': 'Differential Voltage0 (V)' },
+                    'voltage1':        {'fmt':'.6f', 'header': 'Differential Voltage1 (V)' }
                     }
                 },
             
             'apogee_su': {
                 'file_prefix': f'{prefix}apogeeSU/',
                 'fields': {
-                    'timestamp_ns'      : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'radiative_flux' : {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
-                    'voltage'        : {'fmt':'.6f', 'header': 'Differential Voltage Down (V)' }
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'radiative_flux':  {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
+                    'voltage':         {'fmt':'.6f', 'header': 'Differential Voltage Down (V)' }
                     }
                 },
             
             'apogee_sd': {
                 'file_prefix': f'{prefix}apogeeSD/',
                 'fields': {
-                    'timestamp_ns'      : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'radiative_flux' : {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
-                    'voltage'        : {'fmt':'.6f', 'header': 'Differential Voltage Down (V)'}
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'radiative_flux':  {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
+                    'voltage':         {'fmt':'.6f', 'header': 'Differential Voltage Down (V)'}
                     }
                 },
 
             'spec': {
                 'file_prefix': f'{prefix}spec/',
                 'fields': {
-                    'timestamp_ns'      : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'x'              : {'fmt':'.1f', 'header': 'Counts'},
-                    'y'              : {'fmt':'.1f', 'header': 'Counts'}
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'x':               {'fmt':'.1f', 'header': 'Counts'},
+                    'y':               {'fmt':'.1f', 'header': 'Counts'}
                     }
                 },
 
             'dark': {
                 'file_prefix': f'{prefix}spec/',
                 'fields': {
-                    'timestamp_ns'      : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'x'              : {'fmt':'.1f', 'header': 'Counts'},
-                    'y'              : {'fmt':'.1f', 'header': 'Counts'}
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'x':               {'fmt':'.1f', 'header': 'Counts'},
+                    'y':               {'fmt':'.1f', 'header': 'Counts'}
                     }
                 },
-            
+
+            'so2_col':{
+                'file_prefix':f'{prefix}so2_col/',
+                'fields': {
+                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'so2'              : {'fmt':'.2E', 'header': 'SO2 Column (molecules/cm2)'},
+                    'o3'               : {'fmt':'.2E', 'header': 'O3 Column (molecules/cm2)'}
+                    }
+                },
+
             'alpha_opc': {
                 'file_prefix': f'{prefix}opc/',
                 'fields': {
-                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
                     
                     # --- Particle Size Distributions ---
-                    **{f'bin{i}':       {'fmt': '.0f', 'header': f'Bin{i} Raw Count'} for i in range(24)},
-                    **{f'bin{i}mtof':   {'fmt': '.2f', 'header': f'Bin{i} MToF'} for i in [1, 3, 5, 7]},
+                    **{f'bin{i}':      {'fmt': '.0f', 'header': f'Bin{i} Raw Count'} for i in range(24)},
+                    **{f'bin{i}mtof':  {'fmt': '.2f', 'header': f'Bin{i} MToF'} for i in [1, 3, 5, 7]},
                       
                     # --- Mass Concentration Data (The Core Metrics) ---
                     'pm1':             {'fmt': '.2f', 'header': 'PM1 (ug/m3)'},
@@ -213,28 +229,68 @@ class FileLogger(QObject):
             'voltage':{
                 'file_prefix':f'{prefix}voltage/',
                 'fields': {
-                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'excite_v'      : {'fmt':'.6f', 'header': 'Excitation Voltage (V)'}
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'excite_v':        {'fmt':'.6f', 'header': 'Excitation Voltage (V)'}
                     }
                 },
 
-            'alpha_gas':{
-                'file_prefix':f'{prefix}gas/',
+            'alpha_no2':{
+                'file_prefix':f'{prefix}no2/',
                 'fields': {
-                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'name'          : {'fmt':'str', 'header': 'Name'},
-                    'mvolt'         : {'fmt':'.2f', 'header': 'Sensor Voltage (V)'},
-                    'conc'          : {'fmt':'.1f', 'header': 'Gas Concentration (ppm)'}
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'name':            {'fmt':'str', 'header': 'Name'},
+                    'mvolt0_mV':       {'fmt':'.2f', 'header': 'Voltage + (V)'},
+                    'mvolt1_mV':       {'fmt':'.2f', 'header': 'Voltage - (V)'},
+                    'concentration_ppb':{'fmt':'.1f', 'header': 'Gas Concentration (ppb)'},
+                    'temperature_C':   {'fmt':'.1f', 'header': 'Temperature (°C)'}
+                    }
+                },
+
+            'alpha_o3':{
+                'file_prefix':f'{prefix}o3/',
+                'fields': {
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'name':            {'fmt':'str', 'header': 'Name'},
+                    'mvolt0_mV':       {'fmt':'.2f', 'header': 'Voltage + (V)'},
+                    'mvolt1_mV':       {'fmt':'.2f', 'header': 'Voltage - (V)'},
+                    'mvolt2_mV':       {'fmt':'.2f', 'header': 'Voltage + (V)'},
+                    'mvolt3_mV':       {'fmt':'.2f', 'header': 'Voltage - (V)'},
+                    'concentration_ppb':{'fmt':'.1f', 'header': 'Gas Concentration (ppb)'},
+                    'temperature_C':   {'fmt':'.1f', 'header': 'Temperature (°C)'}
+                    }
+                },
+
+            'alpha_h2s':{
+                'file_prefix':f'{prefix}h2s/',
+                'fields': {
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'name':            {'fmt':'str', 'header': 'Name'},
+                    'mvolt0_mV':       {'fmt':'.2f', 'header': 'Voltage + (V)'},
+                    'mvolt1_mV':       {'fmt':'.2f', 'header': 'Voltage - (V)'},
+                    'concentration_ppb':{'fmt':'.1f', 'header': 'Gas Concentration (ppb)'},
+                    'temperature_C':   {'fmt':'.1f', 'header': 'Temperature (°C)'}
+                    }
+                },
+
+            'alpha_so2':{
+                'file_prefix':f'{prefix}so2/',
+                'fields': {
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'name':            {'fmt':'str', 'header': 'Name'},
+                    'mvolt2_mV':       {'fmt':'.2f', 'header': 'Voltage + (V)'},
+                    'mvolt3_mV':       {'fmt':'.2f', 'header': 'Voltage - (V)'},
+                    'concentration_ppb':{'fmt':'.1f', 'header': 'Gas Concentration (ppb)'},
+                    'temperature_C':   {'fmt':'.1f', 'header': 'Temperature (°C)'}
                     }
                 },
 
             'alpha_hcl':{
                 'file_prefix':f'{prefix}hcl/',
                 'fields': {
-                    'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'name'          : {'fmt':'str', 'header': 'Name'},
-                    'mvolt'         : {'fmt':'.2f', 'header': 'Sensor Voltage (V)'},
-                    'conc'          : {'fmt':'.1f', 'header': 'Gas Concentration (ppm)'}
+                    'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
+                    'name':            {'fmt':'str', 'header': 'Name'},
+                    'mvolt':           {'fmt':'.2f', 'header': 'Voltage (V)'},
+                    'conc':            {'fmt':'.1f', 'header': 'Gas Concentration (ppm)'}
                     }
                 },
 
@@ -242,18 +298,19 @@ class FileLogger(QObject):
                 'file_prefix':f'{prefix}co2/',
                 'fields': {
                     'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'name'          : {'fmt':'str', 'header': 'Name'},
-                    'mvolt'         : {'fmt':'.2f', 'header': 'Sensor Voltage (V)'},
-                    'conc'          : {'fmt':'.1f', 'header': 'Gas Concentration (ppm)'}
+                    'name'             : {'fmt':'str', 'header': 'Name'},
+                    'mvolt'            : {'fmt':'.2f', 'header': 'Voltage (V)'},
+                    'conc'             : {'fmt':'.1f', 'header': 'Gas Concentration (ppm)'}
                     }
                 },
 
-            'so2_col':{
-                'file_prefix':f'{prefix}so2_col/',
+            'pt1000':{
+                'file_prefix':f'{prefix}pt1000/',
                 'fields': {
                     'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'so2'           : {'fmt':'.2E', 'header': 'SO2 Column (molecules/cm2)'},
-                    'o3'            : {'fmt':'.2E', 'header': 'O3 Column (molecules/cm2)'}
+                    'name'             : {'fmt':'str', 'header': 'Name'},
+                    'mvolt_mV'         : {'fmt':'.2f', 'header': 'Sensor Voltage (V)'},
+                    'temperature_C'    : {'fmt':'.1f', 'header': 'Temperature (°C)'}
                     }
                 },
 
@@ -261,7 +318,7 @@ class FileLogger(QObject):
                 'file_prefix':f'{prefix}default/',
                 'fields': {
                     'timestamp_ns'     : {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'value'         : {'fmt':'.2E', 'header': 'Rand (arb)'}
+                    'value'            : {'fmt':'.2E', 'header': 'Rand (arb)'}
                     }
                 }
             }
@@ -305,7 +362,15 @@ class FileLogger(QObject):
             for key in ['lat','lon','alt']:
                 if data_dict[key] is not None:
                     self.loc[key] = data_dict[key]
-        
+
+        elif sensor_type == 'pt1000':
+            data_dict['temperature_C'] = calc_pt1000_temperature(data_dict['mvolt_mV'])
+            self.gas_temp = data_dict['temperature_C']
+
+        elif sensor_type in ['alpha_no2','alpha_o3','alpha_h2s','alpha_so2']:
+            data_dict['temperature_C'] = self.gas_temp
+            data_dict['concentration_ppb'] = calc_concentration(data_dict,sensor_type)
+
         if not self.recording_active or (output_file is None):
             return
         
@@ -314,7 +379,7 @@ class FileLogger(QObject):
             if self.excitation_voltage is not None:
                 voltage0, voltage1 = data_dict['voltage0'],data_dict['voltage1']
                 
-                ### HARDCODED ATM
+                ### HARDCODED ATM !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
                 if sensor_type == 'apogee_lu':
                     serial_num = 'SL510_1729'
                 elif sensor_type == 'apogee_ld':
@@ -458,14 +523,13 @@ class FileLogger(QObject):
 
                     self.SENSOR_CONFIG[sensor_type]['output_file'] = filepath + '/dark'
 
-
-                else:    
+                else:
                     filename = sensor_data_layout['file_prefix']+ timestamp
                     output_file = open(filename +'.txt', "w")
                     output_file.write(f"MACE File Version {__fileversion__}\n")
                     
                     # Base metadata headers
-                    base_headers = ["UAS Time", "Local RX Time (ns)"]
+                    base_headers = ["UAS Time"]
                     
                     # Extract custom sensor headers in their defined order
                     sensor_headers = [info['header'] for info in sensor_data_layout['fields'].values()]

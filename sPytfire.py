@@ -60,6 +60,7 @@ from spytfire.sensor.apogee import ApogeeSensorWorker
 from spytfire.sensor.bme_adafruit import BMESensorWorker
 from spytfire.sensor.gas import GasSensorWorker
 from spytfire.sensor.gas_4AFE import AFESensorWorker
+from spytfire.sensor.pt1000 import PT1000SensorWorker
 from spytfire.sensor.opc import OPCSensorWorker
 from spytfire.sensor.spectrometer import SpecWorker
 from spytfire.sensor.spn1 import SPN1SensorWorker
@@ -98,6 +99,7 @@ SENSOR_TYPE_TO_WORKER = {
     'spec'      : SpecWorker,
     'alpha_gas' : GasSensorWorker,
     'alpha_afe' : AFESensorWorker,
+    'pt1000'    : PT1000SensorWorker,
     'fake_spec' : DummySpecWorker,
     'default'   : SensorWorker
 }
@@ -139,11 +141,13 @@ class Controller(QObject):
             self._add_uas_time()
 
         # Setup the I2C bus manager and set multiplex to False for now
-        self.i2cbus_manager0 = I2CManager(multiplex=True,type='board')
-        self.i2cbus_manager1 = I2CManager(multiplex=False,type='smbus2',i2cline=2)
+        self.i2cbus_manager0 = I2CManager(multiplex=False,type='board')
+        #self.i2cbus_manager1 = I2CManager(multiplex=False,type='smbus2',i2cline=2)
 
         # Setup relay control
         self.relay_control = RelayControl()
+        if self.relay_control.is_initialized:
+            self.mav_worker.heater_trigger.connect(self.switch_relay)
 
         # Setup Sensors
         for name, info in SENSOR_INFO.items():
@@ -187,8 +191,6 @@ class Controller(QObject):
         
             if hasattr(handler, "handle_data"):
                 self.mav_worker.data_ready.connect(handler.handle_data)
-
-        self.mav_worker.heater_trigger.connect(self.switch_relay)
 
         self.threads.append(thread)
         self.workers.append(self.mav_worker)
@@ -293,6 +295,12 @@ class Controller(QObject):
                     case 'CO2_HCl':
                         self.curr_workers.append('Alpha_HCl')
                         self.curr_workers.append('Alpha_CO2')
+                    case 'NO2_O3':
+                        self.curr_workers.append('Alpha_NO2')
+                        self.curr_workers.append('Alpha_O3')
+                    case 'H2S_SO2':
+                        self.curr_workers.append('Alpha_H2S')
+                        self.curr_workers.append('Alpha_SO2')
                     case 'UV_Spec':
                         self.curr_workers.append('UV_Spec')
                         self.curr_workers.append('Dark_Spec')
@@ -324,8 +332,14 @@ class Controller(QObject):
             thread.quit()
             thread.wait(1000)
 
-        self.i2cbus_manager0.close()
-        self.relay_control.close()
+        # Close the I2C bus manager
+        if self.i2cbus_manager0.is_initialized:
+            self.i2cbus_manager0.close()
+            self.i2cbus_manager0 = None
+
+        if self.relay_control.is_initialized:
+            self.relay_control.close()
+            self.relay_control = None
             
         # Cleanup FileLogger and Console Logger handlers 
         for handler in self.handlers:

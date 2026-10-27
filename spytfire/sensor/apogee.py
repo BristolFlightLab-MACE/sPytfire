@@ -137,7 +137,7 @@ class ApogeeSensorWorker(BasePollingWorker):
         super().__init__(name, serial_num, address, interval_ms)
 
         try:
-            channel, i2caddress = address
+            _, i2caddress = address
             
             # Create the ADC object using the I2C bus
             self.sensor = ADS1115(i2cbus,address = i2caddress)
@@ -145,9 +145,9 @@ class ApogeeSensorWorker(BasePollingWorker):
         except (NameError, ValueError, OSError, AttributeError, TypeError) as exc:
             print(f"[{self.name}] Hardware failure: {exc}")
             
-            if hasattr(self, 'i2c') and self.i2c:
+            if hasattr(self, 'sensor') and self.sensor:
                 try:
-                    self.i2c.deinit()
+                    self.sensor.deinit()
                 except:
                     pass
             return

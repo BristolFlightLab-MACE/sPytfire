@@ -23,12 +23,20 @@ import adafruit_tca9548a
 
 class I2CManager:
     def __init__(self, multiplex=False, type='board',i2cline=None):
+        self.initialized = False
         self.multiplex = multiplex
 
         if type == 'board':
             self.setup_i2c_board()
         elif type == 'smbus2':
             self.setup_i2c_smbus2(i2cline)
+
+        self.initialized = True
+
+    @property
+    def is_initialized(self):
+        """Safe read-only access for the main thread."""
+        return self.initialized
 
     def setup_i2c_board(self):
         try:
@@ -68,3 +76,4 @@ class I2CManager:
         self.bus = None
         self.i2c.deinit()
         self.i2c = None
+        self.initialized = False
