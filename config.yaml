@@ -7,29 +7,29 @@ sensors:
   #  address: [1,0x39]
   #  interval: 2000
 
-  #BME280:
-  #  serial_num: null
-  #  type: pim_bme280
-  #  address: [1,0x76]
-  #  interval: 500
+  BME280:
+    serial_num: null
+    type: pim_bme280
+    address: [1,0x76]
+    interval: 500
 
-  #Pygeo_Up:
-  #  serial_num: SL510_1729
-  #  type: apogee
-  #  address: [1,0x4B]
-  #  interval: 1000
+  Pygeo_Up:
+    serial_num: SL510_1729
+    type: apogee
+    address: [1,0x4B]
+    interval: 1000
   
-  #Pygeo_Down:
-  #  serial_num: SL610_1463
-  #  type: apogee
-  #  address: [1,0x48]
-  #  interval: 1000
+  Pygeo_Down:
+    serial_num: SL610_1463
+    type: apogee
+    address: [1,0x48]
+    interval: 1000
 
-  #Pyronometer:
-  #  serial_num: [SP510_3985, SP610_1707]
-  #  type: apogee
-  #  address: [1,0x49]
-  #  interval: 1000
+  Pyronometer:
+    serial_num: [SP510_3985, SP610_1707]
+    type: apogee
+    address: [1,0x49]
+    interval: 1000
 
   #Sunshine_Pyro:
   #  serial_num: A5769
@@ -67,20 +67,20 @@ sensors:
   #  address: [2,0x48]
   #  interval: 1000
 
-  NO2_O3:
-    serial_num: [212500902, 214880557] #1,[212590133, 214590649]
-    type: alpha_afe
-    address: [0, 0x49]
-    interval: 1000
+  #NO2_O3:
+  #  serial_num: [212500902, 214880557] #1,[212590133, 214590649]
+  #  type: alpha_afe
+  #  address: [0, 0x49]
+  #  interval: 1000
 
-  H2S_SO2:
-    serial_num: [133590062, 134880636] #1,[133260037, 134590222]
-    type: alpha_afe
-    address: [0,0x4A]
-    interval: 1000
+  #H2S_SO2:
+  #  serial_num: [133590062, 134880636] #1,[133260037, 134590222]
+  #  type: alpha_afe
+  #  address: [0,0x4A]
+  #  interval: 1000
 
-  PT1000:
-    serial_num: [null]
-    type: pt1000
-    address: [0,0x48]
-    interval: 1000
+  #PT1000:
+  #  serial_num: [null]
+  #  type: pt1000
+  #  address: [0,0x48]
+  #  interval: 1000

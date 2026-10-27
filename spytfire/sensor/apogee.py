@@ -82,19 +82,19 @@ def calc_shortwave(k, voltage0):
 @dataclass(frozen=True)
 class ApogeeLSample:
     """A simple container for a single Apogee longwave sample."""
-    voltage0: float
-    voltage1: float
-    sensor_t: float
-    radiative_flux: float
-    excite_v: float
-    timestamp: int
+    voltage0_V: float
+    voltage1_V: float
+    temperature_C: float
+    radiative_flux_W: float
+    excite_V: float
+    timestamp_ns: int
 
 @dataclass(frozen=True)
 class ApogeeSSample:
     """A simple container for a single Apogee shortwave sample."""
-    voltage: float
-    radiative_flux: float
-    timestamp: int
+    voltage_V: float
+    radiative_flux_W: float
+    timestamp_ns: int
 
 # =============================================================================
 
@@ -203,11 +203,11 @@ class ApogeeSensorWorker(BasePollingWorker):
                     sensor_type = 'apogee_ld'
 
                 sample = ApogeeLSample(
-                    voltage0=v0,
-                    voltage1=v1,
-                    sensor_t=temp,
-                    radiative_flux=longwave,
-                    excite_v=excitation_v,
+                    voltage0_V=v0,
+                    voltage1_V=v1,
+                    temperature_C=temp,
+                    radiative_flux_W=longwave,
+                    excite_V=excitation_v,
                     timestamp_ns=self.timestamp()
                 )
                 
@@ -224,8 +224,8 @@ class ApogeeSensorWorker(BasePollingWorker):
                 time.sleep(0.01)
                 v1 = self.chan1.voltage
 
-                k0 = find_coefficients(self.serial_num[0])
-                k1 = find_coefficients(self.serial_num[1])
+                k0 = find_coefficients(self.serial_num[0])[0]
+                k1 = find_coefficients(self.serial_num[1])[0]
 
                 shortwave0 = calc_shortwave(k0, v0)
                 shortwave1 = calc_shortwave(k1, v1)
@@ -233,16 +233,16 @@ class ApogeeSensorWorker(BasePollingWorker):
                 timestamp = self.timestamp()
 
                 sample = ApogeeSSample(
-                    voltage=v0,
-                    radiative_flux=shortwave0,
+                    voltage_V=v0,
+                    radiative_flux_W=shortwave0,
                     timestamp_ns=timestamp
                 )
                 
                 self.data_ready.emit(self.name, 'apogee_su', asdict(sample))
 
                 sample = ApogeeSSample(
-                    voltage=v1,
-                    radiative_flux=shortwave1,
+                    voltage_V=v1,
+                    radiative_flux_W=shortwave1,
                     timestamp_ns=timestamp
                 )
                 

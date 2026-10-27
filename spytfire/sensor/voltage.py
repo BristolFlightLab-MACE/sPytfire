@@ -25,7 +25,7 @@ from adafruit_ads1x15 import ADS1115, AnalogIn, ads1x15
 @dataclass(frozen=True)
 class VoltageSample:
     """A simple container for a single voltage sample."""
-    voltage_v: float
+    excite_V: float
     timestamp_ns: int
 
 class VoltageSensorWorker(BasePollingWorker):
@@ -81,7 +81,7 @@ class VoltageSensorWorker(BasePollingWorker):
 
         try:
             sample = VoltageSample(
-                excite_v=float(self.chan0.voltage),
+                excite_V=float(self.chan0.voltage),
                 timestamp_ns=self.timestamp(),
             )
 

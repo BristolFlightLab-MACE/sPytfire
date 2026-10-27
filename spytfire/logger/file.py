@@ -136,11 +136,11 @@ class FileLogger(QObject):
                 'file_prefix': f'{prefix}apogeeLU/',
                 'fields': {
                     'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'radiative_flux':  {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
-                    'excite_v':        {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
-                    'sensor_t':        {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
-                    'voltage0':        {'fmt':'.6f', 'header': 'Differential Voltage0 (V)' },
-                    'voltage1':        {'fmt':'.6f', 'header': 'Differential Voltage1 (V)' }
+                    'radiative_flux_W':  {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
+                    'excite_V':        {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
+                    'temperature_C':   {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
+                    'voltage0_V':      {'fmt':'.6f', 'header': 'Differential Voltage0 (V)' },
+                    'voltage1_V':      {'fmt':'.6f', 'header': 'Differential Voltage1 (V)' }
                     }
                 },
             
@@ -148,11 +148,11 @@ class FileLogger(QObject):
                 'file_prefix': f'{prefix}apogeeLD/',
                 'fields': {
                     'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'radiative_flux':  {'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
-                    'excite_v':        {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
-                    'sensor_t':        {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
-                    'voltage0':        {'fmt':'.6f', 'header': 'Differential Voltage0 (V)' },
-                    'voltage1':        {'fmt':'.6f', 'header': 'Differential Voltage1 (V)' }
+                    'radiative_flux_W':{'fmt':'.6f', 'header': 'Radiative Flux (W/m2)'},
+                    'excite_V':        {'fmt':'.6f', 'header': 'Excitation Voltage (V)'},
+                    'temperature_C':   {'fmt':'.6f', 'header': "Sensor Temperature (°C)" },
+                    'voltage0_V':      {'fmt':'.6f', 'header': 'Differential Voltage0 (V)' },
+                    'voltage1_V':      {'fmt':'.6f', 'header': 'Differential Voltage1 (V)' }
                     }
                 },
             
@@ -160,8 +160,8 @@ class FileLogger(QObject):
                 'file_prefix': f'{prefix}apogeeSU/',
                 'fields': {
                     'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'radiative_flux':  {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
-                    'voltage':         {'fmt':'.6f', 'header': 'Differential Voltage Down (V)' }
+                    'radiative_flux_W':{'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
+                    'voltage_V':       {'fmt':'.6f', 'header': 'Differential Voltage Down (V)' }
                     }
                 },
             
@@ -169,8 +169,8 @@ class FileLogger(QObject):
                 'file_prefix': f'{prefix}apogeeSD/',
                 'fields': {
                     'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'radiative_flux':  {'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
-                    'voltage':         {'fmt':'.6f', 'header': 'Differential Voltage Down (V)'}
+                    'radiative_flux_W':{'fmt':'.6f', 'header': 'Radiative Flux Down (W/m2)'},
+                    'voltage_V':       {'fmt':'.6f', 'header': 'Differential Voltage Down (V)'}
                     }
                 },
 
@@ -230,7 +230,7 @@ class FileLogger(QObject):
                 'file_prefix':f'{prefix}voltage/',
                 'fields': {
                     'timestamp_ns':    {'fmt':'.0f', 'header': 'Time (ns)'},
-                    'excite_v':        {'fmt':'.6f', 'header': 'Excitation Voltage (V)'}
+                    'excite_V':        {'fmt':'.6f', 'header': 'Excitation Voltage (V)'}
                     }
                 },
 
@@ -353,8 +353,8 @@ class FileLogger(QObject):
         
         # Update excitation voltage to most recently measured value
         if sensor_type == 'voltage':
-            if data_dict['excite_v'] > 2.5 and data_dict['excite_v'] < 3.5:
-                self.excitation_voltage = data_dict['excite_v']
+            if data_dict['excite_V'] > 2.5 and data_dict['excite_V'] < 3.5:
+                self.excitation_voltage = data_dict['excite_V']
             else:
                 self.excitation_voltage = None
         
@@ -392,9 +392,9 @@ class FileLogger(QObject):
                 tk = tk - 273.15
                 
                 # Change radiative flux based on measured voltage
-                data_dict['radiative_flux'] = lw
-                data_dict['sensor_t'] = tk
-                data_dict['excite_v'] = self.excitation_voltage
+                data_dict['radiative_flux_W'] = lw
+                data_dict['temperature_C'] = tk
+                data_dict['excite_V'] = self.excitation_voltage
         
         # Save the data by opening file and constructing string
         if output_file and not output_file.closed:
