@@ -1,6 +1,9 @@
 Adafruit-Blinka==9.1.0
 adafruit-circuitpython-ads1x15==3.0.4
 adafruit-circuitpython-as7341==1.2.27
+adafruit-circuitpython-bmp5xx==1.1.4
+adafruit-circuitpython-bme280==2.6.32
+adafruit-circuitpython-sht4x==1.0.27
 adafruit-circuitpython-tca9548a==0.8.6
 numpy==2.4.6
 scipy==1.16.3
@@ -17,4 +20,4 @@ pandas==2.3.3
 utm==0.7.0
 pyqtgraph==0.14.0
 pyqtdarktheme==0.1.7
-#seabreeze==2.11.0
+seabreeze==2.11.0

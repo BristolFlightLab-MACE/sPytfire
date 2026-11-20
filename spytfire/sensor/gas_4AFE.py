@@ -40,6 +40,12 @@ class sensor_params():
             case 'alpha_no2':
                 self.algorithm = 1
                 match self.serial_num:
+                    case 212590133:
+                        self.sensitivity0 = 0.2300
+                        self.sensitivity1 = None
+
+                        self.WEe,self.AEe,self.WE0,self.AE0 = [285,289,0,1]
+
                     case 212500902:
                         self.sensitivity0 = 0.250
                         self.sensitivity1 = None
@@ -51,6 +57,12 @@ class sensor_params():
             case 'alpha_o3':
                 self.algorithm = 3
                 match self.serial_num:
+                    case 214590649:
+                        self.sensitivity0 = 0.2876
+                        self.sensitivity1 = 0.3117
+
+                        self.WEe,self.AEe,self.WE0,self.AE0 = [400,405,1,1]
+
                     case 214880557:
                         self.sensitivity0 = 0.240
                         self.sensitivity1 = 0.402
@@ -64,6 +76,12 @@ class sensor_params():
             case 'alpha_h2s':
                 self.algorithm = 2
                 match self.serial_num:
+                    case 133260037:
+                        self.sensitivity0 = 0.1343
+                        self.sensitivity1 = None
+
+                        self.WEe,self.AEe,self.WE0,self.AE0 = [279,271,58,5]
+
                     case 133590062:
                         self.sensitivity0 = 1.409
                         self.sensitivity1 = None
@@ -75,6 +93,12 @@ class sensor_params():
             case 'alpha_so2':
                 self.algorithm = 4
                 match self.serial_num:
+                    case 134590222:
+                        self.sensitivity0 = 0.3256
+                        self.sensitivity1 = None
+
+                        self.WEe,self.AEe,self.WE0,self.AE0 = [280,283,15,2]
+
                     case 134880636:
                         self.sensitivity0 = 0.281
                         self.sensitivity1 = None

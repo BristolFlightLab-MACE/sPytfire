@@ -107,7 +107,9 @@ class SO2Analysis(QObject):
         params.add('a_k',  value=0.0, vary=False)
 
         self.params = params
-        
+
+    # !NOT SURE IF THIS SECTION IS CURRENTLY IN USE, TEST NEXT TIME SPECTROMETER IS CONNECTED
+    '''  
     def load_dark(self, dark_fnames):
 
         x, dark = average_spectra(dark_fnames, self.spec_type)
@@ -116,10 +118,11 @@ class SO2Analysis(QObject):
         self.dark_dict[400] = dark
 
         self.analyser.dark_spec = dark
+    '''
 
     def update_dark(self, data_dict):
         int_time = data_dict['integration_time']
-        spec = data_dict['spectral_data']
+        spec = np.array(data_dict['spectral_data'])
         self.dark_dict[int(int_time)] = spec
 
     def timestamp(self):
@@ -155,8 +158,8 @@ class SO2Analysis(QObject):
 
     def analyse_spectrum(self):
 
-        wav  = self.data_dict['wavelength']
-        self.spec = self.data_dict['spectral_data']
+        wav  = np.array(self.data_dict['wavelength'])
+        self.spec = np.array(self.data_dict['spectral_data'])
                 
         # Fit the spectrum using iFit
         fit_result = self.analyser.fit_spectrum(
